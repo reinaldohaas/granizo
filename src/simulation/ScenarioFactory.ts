@@ -95,6 +95,9 @@ export class ScenarioFactory {
         timeScale: 1.0,
         randomSeed: 1337,
         currentStage: 1,
+        stormMinutes: 0.0,
+        autoEvolveStorm: false,
+        stormEvolutionRate: 1.2,
         soundingNodes: nodes
       };
     } else {
@@ -105,14 +108,18 @@ export class ScenarioFactory {
       let lwc = 3.6;
       let shear = 2.6;
       let particles = 40;
+      let stormMin = 20.0;
+      let autoEvolve = false;
 
       if (preset === 'tempestade_comum') {
-        wMax = 18.0;
-        width = 1.6;
-        tilt = 4.0;
-        lwc = 1.6;
-        shear = 1.0;
-        particles = 30;
+        wMax = 20.0;
+        width = 2.0;
+        tilt = 0.0; // Upright cell without shear
+        lwc = 2.0;
+        shear = 0.2;
+        particles = 32;
+        stormMin = 0.0;
+        autoEvolve = true; // Auto-evolve through 0-30 min lifecycle
       } else if (preset === 'tempestade_forte') {
         wMax = 32.0;
         width = 2.2;
@@ -137,6 +144,9 @@ export class ScenarioFactory {
         timeScale: 1.0,
         randomSeed: 1337,
         currentStage: 4,
+        stormMinutes: stormMin,
+        autoEvolveStorm: autoEvolve,
+        stormEvolutionRate: 1.2,
         soundingNodes: nodes
       };
     }

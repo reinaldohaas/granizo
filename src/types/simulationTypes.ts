@@ -83,6 +83,10 @@ export interface SimulationParams {
   timeScale: number;        // Speed multiplier (0.5 to 3.0)
   randomSeed: number;       // PRNG seed
   currentStage: number;     // 1 to 4
+  // Byers & Braham (1949) Ordinary Cell Lifecycle
+  stormMinutes: number;         // 0 to 30 minutes
+  autoEvolveStorm: boolean;     // Whether storm advances continuously
+  stormEvolutionRate: number;   // Storm minutes per real-time second (e.g. 1.2 min/s)
   // Exactly 4 NOAA Sounding Levels
   soundingNodes: SoundingNode[];
 }

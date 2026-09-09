@@ -22,6 +22,9 @@ interface SimulationState {
   setScenario: (preset: ScenarioPreset) => void;
   setSoundingNode: (index: number, tempC: number, dewPointC: number, zKm?: number) => void;
   setStage: (stage: number) => void;
+  setStormMinutes: (min: number) => void;
+  toggleAutoEvolveStorm: () => void;
+  setStormEvolutionRate: (rate: number) => void;
   toggleRunning: () => void;
   toggleTrajectories: () => void;
   toggleIsotherms: () => void;
@@ -68,6 +71,24 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   setStage: (stage) => {
     set((state) => ({
       params: { ...state.params, currentStage: stage }
+    }));
+  },
+
+  setStormMinutes: (min) => {
+    set((state) => ({
+      params: { ...state.params, stormMinutes: Math.max(0, Math.min(30, min)) }
+    }));
+  },
+
+  toggleAutoEvolveStorm: () => {
+    set((state) => ({
+      params: { ...state.params, autoEvolveStorm: !state.params.autoEvolveStorm }
+    }));
+  },
+
+  setStormEvolutionRate: (rate) => {
+    set((state) => ({
+      params: { ...state.params, stormEvolutionRate: rate }
     }));
   },
 

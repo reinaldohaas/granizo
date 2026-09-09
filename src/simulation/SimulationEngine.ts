@@ -19,7 +19,7 @@ export class SimulationEngine {
   public groundStats: GroundHydrometeorStats;
   public selectedIndex: number = 0;
 
-  public static readonly SPEED_MULTIPLIER = 7.5;
+  public static readonly SPEED_MULTIPLIER = 16.0;
   public static readonly FIXED_DT = 0.03;
   private accumulator: number = 0;
 
@@ -67,6 +67,16 @@ export class SimulationEngine {
   }
 
   public update(dtWallSec: number): void {
+    // Continuous accelerated lifecycle for Byers & Braham (1949) ordinary cell
+    if (this.params.activeScenario === 'tempestade_comum' && this.params.autoEvolveStorm) {
+      const rate = this.params.stormEvolutionRate ?? 1.2;
+      const advanceMin = dtWallSec * this.params.timeScale * rate;
+      this.params.stormMinutes = (this.params.stormMinutes ?? 0) + advanceMin;
+      if (this.params.stormMinutes > 30.5) {
+        this.params.stormMinutes = 0.0;
+      }
+    }
+
     const effectiveDt = dtWallSec * this.params.timeScale * SimulationEngine.SPEED_MULTIPLIER;
     this.accumulator += effectiveDt;
 

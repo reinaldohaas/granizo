@@ -285,6 +285,34 @@ export const App: React.FC = () => {
                   </tbody>
                 </table>
               </div>
+
+              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+                <h3 className="text-sm font-bold text-cyan-400">3. O Ciclo de Vida da Tempestade Comum (Byers & Braham, 1949)</h3>
+                <p className="text-slate-300">
+                  O diagrama clássico do <em>Thunderstorm Project</em> ilustra a evolução de 30 minutos de uma célula convectiva ordinária (sem cisalhamento vertical do vento).
+                </p>
+                <div className="bg-white p-3 rounded-lg flex justify-center">
+                  <img
+                    src="./assets/byers_braham_1949_storm.png"
+                    alt="Diagrama de Byers & Braham (1949)"
+                    className="max-h-80 object-contain"
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2 text-[11px]">
+                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                    <strong className="text-amber-400 block mb-1">1. Cumulus (0-15 min)</strong>
+                    Updraft puro. Nuvem cresce de 4 km até 9 km. Gotículas sobem e formam núcleos concêntricos de condensação (1 e 3 g/m³). Nenhuma chuva toca o solo.
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                    <strong className="text-rose-400 block mb-1">2. Maduro (15-22 min)</strong>
+                    Auge da tempestade. Topo atinge a tropopausa (~11 km) e abre a bigorna. Núcleo atinge densidade máxima (5 g/m³). O peso da água desencadeia o downdraft que atinge o solo com chuva torrencial.
+                  </div>
+                  <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+                    <strong className="text-blue-400 block mb-1">3. Dissipação (22-30 min)</strong>
+                    O downdraft asfixia o canal de entrada do ar quente e úmido. A convecção cessa, o núcleo drena para o solo e resta apenas a bigorna residual estratificada.
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}

@@ -3,6 +3,31 @@ import { useSimulationStore } from '../store/simulationStore';
 import { SimulationEngine } from '../simulation/SimulationEngine';
 import { ParticleType, GrowthRegime, ScenarioPreset } from '../types/simulationTypes';
 
+
+function drawArrow(
+  ctx: CanvasRenderingContext2D,
+  fromX: number,
+  fromY: number,
+  toX: number,
+  toY: number,
+  headLen: number = 8
+) {
+  const dx = toX - fromX;
+  const dy = toY - fromY;
+  const angle = Math.atan2(dy, dx);
+  ctx.beginPath();
+  ctx.moveTo(fromX, fromY);
+  ctx.lineTo(toX, toY);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(toX, toY);
+  ctx.lineTo(toX - headLen * Math.cos(angle - Math.PI / 6), toY - headLen * Math.sin(angle - Math.PI / 6));
+  ctx.lineTo(toX - headLen * Math.cos(angle + Math.PI / 6), toY - headLen * Math.sin(angle + Math.PI / 6));
+  ctx.closePath();
+  ctx.fill();
+}
+
 export const SimulationCanvas: React.FC = () => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -16,6 +41,10 @@ export const SimulationCanvas: React.FC = () => {
   const selectParticle = useSimulationStore((state) => state.selectParticle);
   const updateTelemetry = useSimulationStore((state) => state.updateTelemetry);
   const updateGroundStats = useSimulationStore((state) => state.updateGroundStats);
+  const setStormMinutes = useSimulationStore((state) => state.setStormMinutes);
+  const toggleAutoEvolveStorm = useSimulationStore((state) => state.toggleAutoEvolveStorm);
+  const setStormEvolutionRate = useSimulationStore((state) => state.setStormEvolutionRate);
+  const [showDiagramModal, setShowDiagramModal] = React.useState(false);
 
   // Mandatory complete rebuild when resetEpoch changes
   useEffect(() => {
@@ -210,23 +239,177 @@ export const SimulationCanvas: React.FC = () => {
         ctx.fillText('▲ Fusão Completa na Camada Quente | ▼ Camada Fria Rasa (< 1 km): Gota super-resfria e congela no contato com o solo', kmToX(2.0), kmToY(3.8));
 
       } else if (scenario === 'tempestade_comum') {
-        // Cumulus congestus evoluindo para Cumulonimbus
-        ctx.fillStyle = 'rgba(30, 41, 59, 0.85)';
+        const tMin = engine.params.stormMinutes ?? 0.0;
+        const xC = 9.0;
+
+        // Dynamic cloud morphology based on Byers and Braham (1949)
+        let zTop = 4.0;
+        let zBase = 1.5;
+        let wHalf = 1.8;
+        let anvilSpread = 0;
+
+        if (tMin <= 10.0) {
+          const p = tMin / 10.0;
+          zTop = 3.8 + p * 2.4;
+          wHalf = 1.4 + p * 0.8;
+        } else if (tMin <= 15.0) {
+          const p = (tMin - 10.0) / 5.0;
+          zTop = 6.2 + p * 3.0;
+          wHalf = 2.2 + p * 0.5;
+        } else if (tMin <= 22.0) {
+          const p = (tMin - 15.0) / 7.0;
+          zTop = 9.2 + Math.sin(p * Math.PI * 0.5) * 2.0;
+          wHalf = 2.7;
+          anvilSpread = 4.8 * Math.min(1.0, p * 1.3);
+        } else if (tMin <= 27.0) {
+          const p = (tMin - 22.0) / 5.0;
+          zTop = 11.0 - p * 0.5;
+          wHalf = 2.5 - p * 0.4;
+          anvilSpread = 4.5;
+        } else {
+          const p = (tMin - 27.0) / 3.0;
+          zTop = 10.5;
+          zBase = 1.5 + p * 1.8;
+          wHalf = 2.1 - p * 0.5;
+          anvilSpread = 4.2;
+        }
+
+        // 1. Draw Cloud Silhouette
+        ctx.fillStyle = 'rgba(24, 32, 47, 0.88)';
         ctx.beginPath();
-        ctx.moveTo(kmToX(5.5), kmToY(1.8));
-        // Upright cauliflower bulges
-        ctx.bezierCurveTo(kmToX(4.5), kmToY(4.5), kmToX(5.0), kmToY(7.0), kmToX(6.5), kmToY(9.2));
-        ctx.bezierCurveTo(kmToX(7.5), kmToY(10.2), kmToX(9.5), kmToY(10.2), kmToX(11.0), kmToY(9.4));
-        ctx.bezierCurveTo(kmToX(12.5), kmToY(7.5), kmToX(12.5), kmToY(4.5), kmToX(11.8), kmToY(1.8));
+
+        if (anvilSpread > 0.5) {
+          const anvilLeft = xC - wHalf - anvilSpread;
+          const anvilRight = xC + wHalf + anvilSpread;
+          const anvilY = kmToY(zTop - 0.7);
+
+          ctx.moveTo(kmToX(xC - wHalf), kmToY(zBase));
+          ctx.bezierCurveTo(kmToX(xC - wHalf - 0.8), kmToY(zBase + (zTop - zBase) * 0.3), kmToX(xC - wHalf - 0.4), kmToY(zTop - 2.5), kmToX(anvilLeft), anvilY);
+          ctx.bezierCurveTo(kmToX(anvilLeft + 1.0), kmToY(zTop - 0.2), kmToX(xC - 1.5), kmToY(zTop + 0.1), kmToX(xC), kmToY(zTop + 0.3));
+          ctx.bezierCurveTo(kmToX(xC + 1.5), kmToY(zTop + 0.1), kmToX(anvilRight - 1.0), kmToY(zTop - 0.2), kmToX(anvilRight), anvilY);
+          ctx.bezierCurveTo(kmToX(xC + wHalf + 0.4), kmToY(zTop - 2.5), kmToX(xC + wHalf + 0.8), kmToY(zBase + (zTop - zBase) * 0.3), kmToX(xC + wHalf), kmToY(zBase));
+        } else {
+          ctx.moveTo(kmToX(xC - wHalf), kmToY(zBase));
+          ctx.bezierCurveTo(kmToX(xC - wHalf - 0.6), kmToY(zBase + (zTop - zBase) * 0.4), kmToX(xC - wHalf * 0.6), kmToY(zTop - 0.5), kmToX(xC), kmToY(zTop));
+          ctx.bezierCurveTo(kmToX(xC + wHalf * 0.6), kmToY(zTop - 0.5), kmToX(xC + wHalf + 0.6), kmToY(zBase + (zTop - zBase) * 0.4), kmToX(xC + wHalf), kmToY(zBase));
+        }
+
         ctx.closePath();
         ctx.fill();
-        ctx.strokeStyle = 'rgba(71, 85, 105, 0.5)';
+        ctx.strokeStyle = tMin >= 27.0 ? 'rgba(148, 163, 184, 0.4)' : 'rgba(71, 85, 105, 0.6)';
+        if (tMin >= 27.0) ctx.setLineDash([5, 4]);
         ctx.stroke();
+        ctx.setLineDash([]);
 
-        ctx.fillStyle = '#cbd5e1';
-        ctx.font = 'bold 11px JetBrains Mono, monospace';
-        ctx.fillText('Cumulus Congestus / Cb Jovem (Tempestade Comum)', kmToX(5.8), kmToY(10.5));
+        // 2. Concentric LWC Cores (1, 3, 5)
+        // Core 1 (Laranja)
+        if (tMin >= 4.0) {
+          const c1Alpha = Math.min(0.45, ((tMin - 4.0) / 4.0) * 0.45);
+          const c1Bottom = Math.max(zBase + 0.3, tMin >= 18.0 ? 0.0 : 2.2);
+          const c1Top = Math.min(zTop - 0.8, tMin >= 15.0 ? 9.2 : zTop - 0.5);
+          const c1CY = (c1Bottom + c1Top) / 2;
+          const c1RY = (c1Top - c1Bottom) / 2;
+          const c1RX = wHalf * 0.72;
 
+          ctx.fillStyle = `rgba(249, 115, 22, ${c1Alpha})`;
+          ctx.strokeStyle = `rgba(249, 115, 22, ${c1Alpha + 0.3})`;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.ellipse(kmToX(xC), kmToY(c1CY), c1RX * (width / 22), c1RY * (height / 14), 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#ea580c';
+          ctx.font = 'bold 10px JetBrains Mono, monospace';
+          ctx.fillText('1', kmToX(xC + c1RX * 0.75), kmToY(c1CY + c1RY * 0.4));
+        }
+
+        // Core 3 (Magenta)
+        if (tMin >= 10.0) {
+          const c3Alpha = Math.min(0.55, ((tMin - 10.0) / 4.0) * 0.55);
+          const c3Bottom = Math.max(zBase + 0.6, tMin >= 20.0 ? 0.0 : 3.0);
+          const c3Top = Math.min(zTop - 1.4, tMin >= 15.0 ? 7.8 : zTop - 0.9);
+          const c3CY = (c3Bottom + c3Top) / 2;
+          const c3RY = Math.max(0.5, (c3Top - c3Bottom) / 2);
+          const c3RX = wHalf * 0.48;
+
+          ctx.fillStyle = `rgba(236, 72, 153, ${c3Alpha})`;
+          ctx.strokeStyle = `rgba(236, 72, 153, ${c3Alpha + 0.3})`;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.ellipse(kmToX(xC), kmToY(c3CY), c3RX * (width / 22), c3RY * (height / 14), 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#ec4899';
+          ctx.font = 'bold 10px JetBrains Mono, monospace';
+          ctx.fillText('3', kmToX(xC + c3RX * 0.7), kmToY(c3CY + c3RY * 0.3));
+        }
+
+        // Core 5 (Vermelho)
+        if (tMin >= 16.0 && tMin <= 26.0) {
+          const c5Alpha = Math.min(0.65, Math.sin(((tMin - 16.0) / 10.0) * Math.PI) * 0.65);
+          const c5Bottom = tMin >= 20.0 ? 0.8 : 3.6;
+          const c5Top = tMin >= 20.0 ? 6.5 : 6.8;
+          const c5CY = (c5Bottom + c5Top) / 2;
+          const c5RY = (c5Top - c5Bottom) / 2;
+          const c5RX = wHalf * 0.25;
+
+          ctx.fillStyle = `rgba(239, 68, 68, ${c5Alpha})`;
+          ctx.strokeStyle = `rgba(239, 68, 68, ${c5Alpha + 0.3})`;
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.ellipse(kmToX(xC), kmToY(c5CY), c5RX * (width / 22), c5RY * (height / 14), 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#ef4444';
+          ctx.font = 'bold 10px JetBrains Mono, monospace';
+          ctx.fillText('5', kmToX(xC + c5RX * 0.8), kmToY(c5CY));
+        }
+
+        // 3. Flow Vector Arrows on Canvas
+        ctx.lineWidth = 1.6;
+        if (tMin < 15.0) {
+          ctx.strokeStyle = 'rgba(251, 191, 36, 0.75)';
+          ctx.fillStyle = 'rgba(251, 191, 36, 0.75)';
+          drawArrow(ctx, kmToX(xC), kmToY(zBase - 0.4), kmToX(xC), kmToY(zTop - 1.2));
+          drawArrow(ctx, kmToX(xC - 1.2), kmToY(zBase - 0.4), kmToX(xC - 0.6), kmToY(zTop - 2.0));
+          drawArrow(ctx, kmToX(xC + 1.2), kmToY(zBase - 0.4), kmToX(xC + 0.6), kmToY(zTop - 2.0));
+        } else if (tMin <= 22.0) {
+          ctx.strokeStyle = 'rgba(251, 191, 36, 0.8)';
+          ctx.fillStyle = 'rgba(251, 191, 36, 0.8)';
+          drawArrow(ctx, kmToX(xC), kmToY(7.0), kmToX(xC), kmToY(zTop - 0.3));
+          drawArrow(ctx, kmToX(xC - 1.0), kmToY(8.0), kmToX(xC - anvilSpread * 0.6), kmToY(zTop - 0.8));
+          drawArrow(ctx, kmToX(xC + 1.0), kmToY(8.0), kmToX(xC + anvilSpread * 0.6), kmToY(zTop - 0.8));
+
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.85)';
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.85)';
+          drawArrow(ctx, kmToX(xC - 0.8), kmToY(4.5), kmToX(xC - 1.4), kmToY(0.4));
+          drawArrow(ctx, kmToX(xC + 0.8), kmToY(4.5), kmToX(xC + 1.4), kmToY(0.4));
+        } else {
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.85)';
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.85)';
+          drawArrow(ctx, kmToX(xC), kmToY(6.5), kmToX(xC), kmToY(0.4));
+          drawArrow(ctx, kmToX(xC - 1.0), kmToY(5.0), kmToX(xC - 1.8), kmToY(0.4));
+          drawArrow(ctx, kmToX(xC + 1.0), kmToY(5.0), kmToX(xC + 1.8), kmToY(0.4));
+        }
+
+        // 4. Stage Title and Banner
+        let stageName = '';
+        if (tMin < 10.0) stageName = 'Estagio 1: Cumulus Inicial (0 - 10 min) • Updraft Puro, Sem Chuva';
+        else if (tMin < 15.0) stageName = 'Estagio 2: Cumulus Congestus (10 - 15 min) • Torre Alta e Nucleos 1-3';
+        else if (tMin <= 22.0) stageName = 'Estagio 3: Maduro / Auge (15 - 22 min) • Bigorna (11 km), Nucleo 5, Downdraft e Chuva';
+        else if (tMin <= 27.0) stageName = 'Estagio 4: Inicio da Dissipacao (22 - 27 min) • Downdraft Sufoca o Updraft';
+        else stageName = 'Estagio 5: Dissipacao Completa (27 - 30 min) • Bigorna Orfa e Fim da Chuva';
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 12px JetBrains Mono, monospace';
+        ctx.fillText(`⏱️ ${tMin.toFixed(1)} min / 30 min • ${stageName}`, kmToX(1.5), kmToY(12.8));
+
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.8)';
+        ctx.font = '10px JetBrains Mono, monospace';
+        ctx.fillText('Modelo Classico Byers e Braham (1949) • Contornos 1, 3, 5 de Agua Liquida', kmToX(1.5), kmToY(12.3));
       } else if (scenario === 'tempestade_forte') {
         // Cumulonimbus grande com várias torres
         ctx.fillStyle = 'rgba(30, 41, 59, 0.88)';
@@ -615,6 +798,132 @@ export const SimulationCanvas: React.FC = () => {
         onClick={handleCanvasClick}
         className="w-full h-auto block cursor-crosshair"
       />
+      {/* Ordinary Storm Byers & Braham (1949) Interactive Lifecycle Bar */}
+      {activeScenario === 'tempestade_comum' && (
+        <div className="bg-slate-900/95 border-t border-slate-800 p-2.5 sm:p-3 text-xs space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {/* Play/Pause & Time */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleAutoEvolveStorm}
+                className={`px-3 py-1 rounded-lg font-bold flex items-center gap-1.5 text-xs transition shadow ${
+                  params.autoEvolveStorm ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                }`}
+              >
+                {params.autoEvolveStorm ? '⏸️ Pausar Ciclo' : '▶️ Ciclo Acelerado'}
+              </button>
+
+              <span className="font-mono font-bold text-cyan-400 text-xs sm:text-sm bg-slate-950 px-2.5 py-0.5 rounded border border-cyan-800/60">
+                ⏱️ {(params.stormMinutes ?? 0).toFixed(1)} / 30.0 min
+              </span>
+
+              {/* Speed buttons */}
+              <div className="flex items-center gap-1 bg-slate-950 p-0.5 rounded-lg border border-slate-800 text-[11px]">
+                <span className="text-[10px] text-slate-500 px-1 font-bold">Velocidade:</span>
+                {[
+                  { label: '1x (25s)', rate: 1.2 },
+                  { label: '2x (12s)', rate: 2.4 },
+                  { label: '4x (6s)', rate: 4.8 }
+                ].map((s) => (
+                  <button
+                    key={s.label}
+                    onClick={() => setStormEvolutionRate(s.rate)}
+                    className={`px-2 py-0.5 rounded font-bold transition ${
+                      Math.abs((params.stormEvolutionRate ?? 1.2) - s.rate) < 0.1
+                        ? 'bg-cyan-600 text-white shadow'
+                        : 'text-slate-400 hover:text-white'
+                    }`}
+                  >
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Reference Diagram Toggle */}
+            <button
+              onClick={() => setShowDiagramModal(!showDiagramModal)}
+              className="px-2.5 py-1 rounded-lg bg-cyan-950 border border-cyan-800 text-cyan-300 hover:bg-cyan-900 font-bold text-xs flex items-center gap-1 transition shadow"
+            >
+              📖 {showDiagramModal ? 'Ocultar Diagrama Byers & Braham' : 'Ver Diagrama de Referencia (1949)'}
+            </button>
+          </div>
+
+          {/* Scrubber slider */}
+          <div className="flex items-center gap-3 pt-1">
+            <span className="text-slate-400 text-[11px] font-mono whitespace-nowrap">0 min</span>
+            <input
+              type="range"
+              min="0"
+              max="30"
+              step="0.2"
+              value={params.stormMinutes ?? 0}
+              onChange={(e) => {
+                const val = parseFloat(e.target.value);
+                setStormMinutes(val);
+                if (engineRef.current) engineRef.current.params.stormMinutes = val;
+              }}
+              className="flex-1 h-2 bg-slate-800 rounded-lg cursor-pointer accent-cyan-400"
+            />
+            <span className="text-slate-400 text-[11px] font-mono whitespace-nowrap">30 min</span>
+          </div>
+
+          {/* Quick jump stage buttons */}
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 pt-1">
+            {[
+              { min: 0, label: '0m: Cumulus' },
+              { min: 10, label: '10m: Congestus' },
+              { min: 15, label: '15m: Torre Alta' },
+              { min: 20, label: '20m: Maduro (Auge)' },
+              { min: 25, label: '25m: Downdraft' },
+              { min: 30, label: '30m: Dissipacao' }
+            ].map((st) => (
+              <button
+                key={st.min}
+                onClick={() => {
+                  setStormMinutes(st.min);
+                  if (engineRef.current) engineRef.current.params.stormMinutes = st.min;
+                }}
+                className={`px-1.5 py-1 rounded text-[10px] font-semibold border transition text-center ${
+                  Math.abs((params.stormMinutes ?? 0) - st.min) < 2.5
+                    ? 'bg-cyan-950 border-cyan-400 text-cyan-300 font-bold shadow'
+                    : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-white'
+                }`}
+              >
+                {st.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Modal / Card showing Byers & Braham (1949) Diagram */}
+          {showDiagramModal && (
+            <div className="p-3 bg-slate-950 border border-cyan-800/60 rounded-xl space-y-2 mt-2">
+              <div className="flex justify-between items-center border-b border-slate-800 pb-1.5">
+                <h5 className="font-bold text-cyan-300 text-xs flex items-center gap-1.5">
+                  <span>📊</span> Diagrama Classico: Byers & Braham (1949) - The Thunderstorm Project
+                </h5>
+                <button
+                  onClick={() => setShowDiagramModal(false)}
+                  className="text-slate-400 hover:text-white text-xs px-2 py-0.5 rounded bg-slate-800"
+                >
+                  ✕ Fechar
+                </button>
+              </div>
+              <img
+                src="./assets/byers_braham_1949_storm.png"
+                alt="Diagrama de Tempestade Comum - Byers e Braham (1949)"
+                className="w-full max-h-72 object-contain rounded-lg bg-white p-2"
+              />
+              <p className="text-[11px] text-slate-300 leading-relaxed">
+                Observe as fases: <strong>0 a 15 min</strong> (crescimento de 4 a 9 km, correntes ascendentes puras, nucleos 1 e 3); 
+                <strong> 20 min</strong> (estagio maduro com bigorna em 11 km, nucleo maximo 5 e surgimento do downdraft com chuva); 
+                <strong> 25 a 30 min</strong> (dissipacao com downdraft dominante sufocando a tempestade).
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="absolute top-2 left-3 pointer-events-none flex items-center gap-2">
         <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-900/90 text-cyan-400 border border-slate-700/60 backdrop-blur-sm">
           {params.family === 'thermodynamic' ? 'Precipitação Termodinâmica (NOAA NESDIS)' : 'Precipitação Convectiva (Tempestades Severas)'}
