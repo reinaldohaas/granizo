@@ -50,7 +50,7 @@ export class SimulationEngine {
     globalRNG.setSeed(this.params.randomSeed);
     this.wind.reseed();
     const isConvective = this.params.family === 'convective';
-    this.particles.init(this.params.numParticles, isConvective);
+    this.particles.init(this.params.numParticles, isConvective, this.params.activeScenario);
     this.selectedIndex = 0;
   }
 
@@ -306,7 +306,7 @@ export class SimulationEngine {
         // Melting below Freezing Level (T > 0°C)
         if (T > 0.0) {
           this.particles.regimes[i] = GrowthRegime.MELTING;
-          const insideDowndraft = this.wind.isInsideDowndraft(x, z);
+          const insideDowndraft = this.wind.isInsideDowndraft(x, z, this.params.activeScenario);
 
           if (insideDowndraft) {
             // Inside Downdraft: fast transit + chilled air -> minimal melting, arrives intact as hail
@@ -351,12 +351,12 @@ export class SimulationEngine {
 
           const respawnIdx = i;
           setTimeout(() => {
-            this.particles.spawnParticle(respawnIdx, true, false);
+            this.particles.spawnParticle(respawnIdx, true, false, this.params.activeScenario);
           }, 150 + Math.random() * 400);
         }
 
-        if (x < 0.5 || x > 22.0 || z > 14.0) {
-          this.particles.spawnParticle(i, true, false);
+        if (x < 0.5 || x > 22.0 || z > 15.6) {
+          this.particles.spawnParticle(i, true, false, this.params.activeScenario);
         }
       }
     }

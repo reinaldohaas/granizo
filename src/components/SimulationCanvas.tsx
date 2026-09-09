@@ -45,6 +45,8 @@ export const SimulationCanvas: React.FC = () => {
   const toggleAutoEvolveStorm = useSimulationStore((state) => state.toggleAutoEvolveStorm);
   const setStormEvolutionRate = useSimulationStore((state) => state.setStormEvolutionRate);
   const [showDiagramModal, setShowDiagramModal] = React.useState(false);
+  const [multicellHighlight, setMulticellHighlight] = React.useState<'all' | 'IV' | 'III' | 'II' | 'I' | 'gust_front'>('all');
+  const [showMulticellModal, setShowMulticellModal] = React.useState(false);
 
   // Mandatory complete rebuild when resetEpoch changes
   useEffect(() => {
@@ -110,8 +112,9 @@ export const SimulationCanvas: React.FC = () => {
 
       const groundY = height - 44;
       const topY = 28;
+      const maxZKm = 16.0;
       const kmToX = (xKm: number) => (xKm / 22.0) * width;
-      const kmToY = (zKm: number) => groundY - (zKm / 14.0) * (groundY - topY);
+      const kmToY = (zKm: number) => groundY - (zKm / maxZKm) * (groundY - topY);
 
       // 1. Sky Gradient Background
       const skyGrad = ctx.createLinearGradient(0, 0, 0, height);
@@ -138,9 +141,39 @@ export const SimulationCanvas: React.FC = () => {
 
         ctx.fillStyle = '#38bdf8';
         ctx.font = 'bold 10px JetBrains Mono, monospace';
-        ctx.fillText(`0°C (${engine.params.zFreezingKm.toFixed(1)} km) - Nível de Fusão/Congelamento`, 8, fzY - 4);
+        ctx.fillText(`0°C (${engine.params.zFreezingKm.toFixed(1)} km) - Nível de Fusão/Congelamento`, 36, fzY - 4);
         ctx.setLineDash([]);
       }
+
+      // Height (km) Axis on the left (matching the scientific diagram: 0, 5, 10, 15 km)
+      ctx.save();
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.4)';
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      ctx.moveTo(kmToX(0.7), kmToY(0));
+      ctx.lineTo(kmToX(0.7), kmToY(15.2));
+      ctx.stroke();
+
+      const heightTicks = [0, 5, 10, 15];
+      ctx.font = 'bold 9px JetBrains Mono, monospace';
+      ctx.fillStyle = '#94a3b8';
+      for (const hKm of heightTicks) {
+        const y = kmToY(hKm);
+        ctx.beginPath();
+        ctx.moveTo(kmToX(0.4), y);
+        ctx.lineTo(kmToX(0.7), y);
+        ctx.stroke();
+        ctx.fillText(`${hKm}`, kmToX(0.12), y + 3);
+      }
+      ctx.save();
+      ctx.translate(kmToX(0.28), kmToY(7.5));
+      ctx.rotate(-Math.PI / 2);
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = 'bold 9px JetBrains Mono, monospace';
+      ctx.fillText('Height (km)', 0, -8);
+      ctx.restore();
+      ctx.restore();
 
       // 4. METEOROLOGICALLY COHERENT CLOUD DRAWING FOR ALL 7 SCENARIOS
       const scenario = engine.params.activeScenario;
@@ -411,24 +444,273 @@ export const SimulationCanvas: React.FC = () => {
         ctx.font = '10px JetBrains Mono, monospace';
         ctx.fillText('Modelo Classico Byers e Braham (1949) • Contornos 1, 3, 5 de Agua Liquida', kmToX(1.5), kmToY(12.3));
       } else if (scenario === 'tempestade_forte') {
-        // Cumulonimbus grande com várias torres
-        ctx.fillStyle = 'rgba(30, 41, 59, 0.88)';
+        // =========================================================================
+        // TEMPESTADE MUITO FORTE / MULTICELULAR COM LINHA DE FLANCO (IV, III, II, I)
+        // Reprodução científica e didática fiel ao diagrama de referência:
+        // Células IV, III, II (topo penetrante 15 km), Célula I (bigorna e downdraft),
+        // frente de rajada com dentes de frente fria e contornos 10, 30, 50 dBZ.
+        // =========================================================================
+
+        // 1. Linha horizontal da base da nuvem (LCL ~ 2.5 km)
+        ctx.strokeStyle = 'rgba(148, 163, 184, 0.45)';
+        ctx.lineWidth = 1.0;
+        ctx.setLineDash([4, 4]);
         ctx.beginPath();
-        ctx.moveTo(kmToX(3.5), kmToY(1.6));
-        // Secondary turret left
-        ctx.bezierCurveTo(kmToX(3.0), kmToY(5.0), kmToX(4.5), kmToY(8.0), kmToX(6.0), kmToY(8.8));
-        // Main tower center
-        ctx.bezierCurveTo(kmToX(7.0), kmToY(11.2), kmToX(9.5), kmToY(11.5), kmToX(11.5), kmToY(10.5));
-        // Developing turret right
-        ctx.bezierCurveTo(kmToX(13.0), kmToY(8.5), kmToX(14.5), kmToY(5.5), kmToX(14.0), kmToY(1.6));
+        ctx.moveTo(kmToX(1.4), kmToY(2.5));
+        ctx.lineTo(kmToX(10.5), kmToY(2.5));
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // 2. Silhueta Contínua das Nuvens Convectivas (IV, III, II e I)
+        ctx.fillStyle = 'rgba(30, 41, 59, 0.88)';
+        ctx.strokeStyle = 'rgba(100, 116, 139, 0.75)';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+
+        // Início na base da Célula IV
+        ctx.moveTo(kmToX(1.6), kmToY(2.5));
+        // CÉLULA IV: Cúmulo na linha de flanco (topo ~ 6.0 km)
+        ctx.bezierCurveTo(kmToX(1.4), kmToY(4.2), kmToX(2.0), kmToY(5.6), kmToX(2.8), kmToY(6.0));
+        ctx.bezierCurveTo(kmToX(3.6), kmToY(6.3), kmToX(4.4), kmToY(5.8), kmToX(4.9), kmToY(5.0));
+        // CÉLULA III: Cumulus congestus em forte crescimento vertical (topo ~ 10.5 km)
+        ctx.bezierCurveTo(kmToX(5.3), kmToY(7.2), kmToX(5.8), kmToY(9.8), kmToX(7.0), kmToY(10.5));
+        ctx.bezierCurveTo(kmToX(8.0), kmToY(10.6), kmToX(8.6), kmToY(9.2), kmToX(9.0), kmToY(8.6));
+        // CÉLULA II: Célula madura vigorosa com Cúpula Penetrante / Overshooting Top (topo ~ 15.1 km)
+        ctx.bezierCurveTo(kmToX(9.2), kmToY(11.5), kmToX(10.0), kmToY(13.8), kmToX(10.8), kmToY(14.8));
+        ctx.bezierCurveTo(kmToX(11.4), kmToY(15.2), kmToX(12.2), kmToY(15.0), kmToX(12.8), kmToY(14.2));
+        // Descida para a bigorna e CÉLULA I (topo bigorna ~ 13.8 km)
+        ctx.bezierCurveTo(kmToX(13.6), kmToY(13.8), kmToX(15.5), kmToY(13.9), kmToX(18.0), kmToY(13.8));
+        ctx.bezierCurveTo(kmToX(19.8), kmToY(13.7), kmToX(21.4), kmToY(13.5), kmToX(21.5), kmToY(13.5));
+        // Borda direita da bigorna e descida até a superfície
+        ctx.bezierCurveTo(kmToX(21.6), kmToY(9.5), kmToX(21.4), kmToY(4.0), kmToX(21.2), kmToY(0.0));
+        // Solo de I até o pé da frente de rajada
+        ctx.lineTo(kmToX(13.6), kmToY(0.0));
+        // Borda inferior da cortina de precipitação e rampa da frente de rajada
+        ctx.bezierCurveTo(kmToX(13.0), kmToY(2.2), kmToX(12.0), kmToY(3.5), kmToX(10.5), kmToY(3.6));
+        ctx.lineTo(kmToX(10.5), kmToY(2.5));
+        ctx.lineTo(kmToX(1.6), kmToY(2.5));
         ctx.closePath();
         ctx.fill();
-        ctx.strokeStyle = 'rgba(71, 85, 105, 0.55)';
         ctx.stroke();
 
-        ctx.fillStyle = '#cbd5e1';
+        // 3. NÚCLEOS DE REFLETIVIDADE (10, 30, 50 dBZ)
+        // A. Contorno de 10 dBZ (Laranja): envolvente na Célula II e I
+        ctx.fillStyle = 'rgba(249, 115, 22, 0.45)';
+        ctx.strokeStyle = '#f97316';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(kmToX(9.2), kmToY(11.2));
+        ctx.bezierCurveTo(kmToX(9.0), kmToY(12.8), kmToX(10.5), kmToY(13.2), kmToX(13.0), kmToY(13.1));
+        ctx.bezierCurveTo(kmToX(16.0), kmToY(13.2), kmToX(19.5), kmToY(13.1), kmToX(21.5), kmToY(13.0));
+        ctx.lineTo(kmToX(21.5), kmToY(4.5));
+        ctx.bezierCurveTo(kmToX(21.3), kmToY(1.0), kmToX(19.5), kmToY(0.0), kmToX(13.8), kmToY(0.0));
+        ctx.bezierCurveTo(kmToX(13.8), kmToY(4.5), kmToX(12.2), kmToY(8.0), kmToX(9.2), kmToY(11.2));
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Etiqueta '10' dBZ na bigorna
+        ctx.fillStyle = '#ea580c';
+        ctx.font = 'bold 12px JetBrains Mono, monospace';
+        ctx.fillText('10', kmToX(20.4), kmToY(12.6));
+
+        // B. Contorno de 30 dBZ (Magenta / Roxo): coluna de precipitação na Célula I
+        ctx.fillStyle = 'rgba(217, 70, 239, 0.58)';
+        ctx.strokeStyle = '#d946ef';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(kmToX(14.2), kmToY(0.0));
+        ctx.lineTo(kmToX(14.4), kmToY(5.5));
+        ctx.bezierCurveTo(kmToX(14.8), kmToY(9.8), kmToX(16.0), kmToY(11.0), kmToX(17.5), kmToY(11.0));
+        ctx.bezierCurveTo(kmToX(19.0), kmToY(11.0), kmToX(19.8), kmToY(9.2), kmToX(19.8), kmToY(5.0));
+        ctx.lineTo(kmToX(19.8), kmToY(0.0));
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // Etiqueta '30' dBZ
+        ctx.fillStyle = '#fdf4ff';
         ctx.font = 'bold 11px JetBrains Mono, monospace';
-        ctx.fillText('Cumulonimbus Multicelular (Tempestade Forte)', kmToX(5.0), kmToY(11.8));
+        ctx.fillText('30', kmToX(19.1), kmToY(6.5));
+        ctx.fillText('30', kmToX(17.8), kmToY(3.5));
+
+        // C. Contorno > 50 dBZ no Solo (Vermelho Intenso - Chuva Torrencial e Granizo)
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.72)';
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(kmToX(15.0), kmToY(0.0));
+        ctx.lineTo(kmToX(15.1), kmToY(3.8));
+        ctx.bezierCurveTo(kmToX(15.3), kmToY(6.5), kmToX(16.2), kmToY(7.0), kmToX(17.0), kmToY(7.0));
+        ctx.bezierCurveTo(kmToX(17.6), kmToY(7.0), kmToX(18.0), kmToY(5.8), kmToX(18.0), kmToY(3.5));
+        ctx.lineTo(kmToX(18.0), kmToY(0.0));
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        // D. Contorno 50 dBZ Suspenso no Topo da Célula II (Magenta / Roxo)
+        ctx.fillStyle = 'rgba(217, 70, 239, 0.75)';
+        ctx.strokeStyle = '#f472b6';
+        ctx.lineWidth = 2.0;
+        ctx.beginPath();
+        ctx.ellipse(kmToX(11.0), kmToY(11.0), 1.2 * (width / 22), 1.5 * ((groundY - topY) / 16), 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Etiqueta '50' dBZ no topo de II
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 11px JetBrains Mono, monospace';
+        ctx.fillText('50', kmToX(11.6), kmToY(11.0));
+
+        // 4. FRENTE DE RAJADA (GUST FRONT) & PISCINA FRIA (COLD POOL)
+        // Cunha de ar frio no solo entre Célula III e Célula II
+        ctx.fillStyle = 'rgba(14, 165, 233, 0.15)';
+        ctx.beginPath();
+        ctx.moveTo(kmToX(10.2), kmToY(0.0));
+        ctx.lineTo(kmToX(11.2), kmToY(3.6));
+        ctx.lineTo(kmToX(13.6), kmToY(0.0));
+        ctx.closePath();
+        ctx.fill();
+
+        // Linha inclinada da frente de rajada com dentes/triângulos meteorológicos pretos
+        ctx.strokeStyle = '#020617';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(kmToX(10.2), kmToY(0.0));
+        ctx.lineTo(kmToX(11.2), kmToY(3.6));
+        ctx.stroke();
+
+        // Triângulos pretos apontando para a esquerda (ar quente frontal)
+        const drawColdFrontTriangle = (zMid: number) => {
+          const fx = 10.2 + (zMid / 3.6) * 1.0;
+          const pX = kmToX(fx);
+          const pY = kmToY(zMid);
+          ctx.fillStyle = '#020617';
+          ctx.beginPath();
+          ctx.moveTo(pX, pY - 7);
+          ctx.lineTo(pX - 10, pY);
+          ctx.lineTo(pX, pY + 7);
+          ctx.closePath();
+          ctx.fill();
+        };
+        drawColdFrontTriangle(1.0);
+        drawColdFrontTriangle(2.4);
+
+        // Turbulência de rajada na superfície (zig-zag do vento no solo)
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 1.4;
+        ctx.beginPath();
+        ctx.moveTo(kmToX(8.8), kmToY(0.4));
+        ctx.lineTo(kmToX(9.1), kmToY(0.8));
+        ctx.lineTo(kmToX(9.4), kmToY(0.3));
+        ctx.lineTo(kmToX(9.7), kmToY(0.9));
+        ctx.lineTo(kmToX(10.0), kmToY(0.4));
+        ctx.lineTo(kmToX(10.2), kmToY(0.0));
+        ctx.stroke();
+
+        // 5. RÓTULOS DAS 4 CÉLULAS (IV, III, II, I)
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 15px JetBrains Mono, monospace';
+        ctx.fillText('IV', kmToX(3.4), kmToY(6.8));
+        ctx.fillText('III', kmToX(7.1), kmToY(11.2));
+        ctx.fillText('II', kmToX(11.4), kmToY(15.3));
+        ctx.fillText('I', kmToX(17.2), kmToY(14.5));
+
+        // 6. LINHAS DE FLUXO DE VENTO E SETAS (IDÊNTICAS AO DIAGRAMA DE REFERÊNCIA)
+        ctx.lineWidth = 1.8;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+
+        // A. Influxo e subida suave na Célula IV
+        ctx.beginPath();
+        ctx.moveTo(kmToX(2.0), kmToY(0.4));
+        ctx.bezierCurveTo(kmToX(2.6), kmToY(0.6), kmToX(3.2), kmToY(2.2), kmToX(3.5), kmToY(5.2));
+        ctx.stroke();
+        drawArrow(ctx, kmToX(3.48), kmToY(4.9), kmToX(3.5), kmToY(5.4), 7);
+
+        // Flecha menor na base de IV
+        drawArrow(ctx, kmToX(4.6), kmToY(2.2), kmToX(4.7), kmToY(3.6), 5);
+
+        // B. Influxo e subida acelerada na Célula III
+        ctx.beginPath();
+        ctx.moveTo(kmToX(3.2), kmToY(0.4));
+        ctx.bezierCurveTo(kmToX(5.2), kmToY(0.5), kmToX(6.8), kmToY(3.0), kmToX(7.2), kmToY(9.2));
+        ctx.stroke();
+        drawArrow(ctx, kmToX(7.18), kmToY(8.8), kmToX(7.2), kmToY(9.4), 8);
+
+        // Flecha menor na base de III
+        drawArrow(ctx, kmToX(8.8), kmToY(2.2), kmToX(8.9), kmToY(3.6), 5);
+
+        // C. Influxo potente da camada limite que alimenta a Célula II
+        ctx.beginPath();
+        ctx.moveTo(kmToX(6.5), kmToY(0.4));
+        ctx.bezierCurveTo(kmToX(8.8), kmToY(0.5), kmToX(10.2), kmToY(1.5), kmToX(11.0), kmToY(5.5));
+        ctx.lineTo(kmToX(11.0), kmToY(12.5));
+        ctx.stroke();
+
+        // Trifurcação no topo da Célula II
+        // Ramo central: sobe no topo penetrante
+        drawArrow(ctx, kmToX(11.0), kmToY(12.5), kmToX(11.0), kmToY(14.6), 7);
+        // Ramo esquerdo: diverge para a retaguarda
+        drawArrow(ctx, kmToX(11.0), kmToY(12.5), kmToX(9.8), kmToY(13.6), 7);
+        // Ramo direito: diverge para a bigorna
+        drawArrow(ctx, kmToX(11.0), kmToY(12.5), kmToX(12.4), kmToY(13.6), 7);
+
+        // D. Ramo ascendente inclinado sobre a rampa da frente de rajada
+        ctx.beginPath();
+        ctx.moveTo(kmToX(11.8), kmToY(3.8));
+        ctx.bezierCurveTo(kmToX(12.8), kmToY(6.5), kmToX(14.5), kmToY(10.0), kmToX(15.5), kmToY(12.5));
+        ctx.stroke();
+        drawArrow(ctx, kmToX(15.5), kmToY(12.5), kmToX(14.0), kmToY(13.2), 6);
+        drawArrow(ctx, kmToX(15.5), kmToY(12.5), kmToX(16.0), kmToY(13.8), 6);
+        drawArrow(ctx, kmToX(15.5), kmToY(12.5), kmToX(17.5), kmToY(13.3), 6);
+
+        // E. CORRENTE DESCENDENTE (DOWNDRAFT) NA CÉLULA I
+        ctx.strokeStyle = '#020617';
+        ctx.fillStyle = '#020617';
+        ctx.lineWidth = 2.0;
+        ctx.beginPath();
+        ctx.moveTo(kmToX(16.8), kmToY(8.5));
+        ctx.lineTo(kmToX(16.8), kmToY(1.5));
+        ctx.stroke();
+        drawArrow(ctx, kmToX(16.8), kmToY(2.2), kmToX(16.8), kmToY(1.0), 8);
+
+        // Bifurcação na superfície (piscina fria e outflow)
+        ctx.beginPath();
+        ctx.moveTo(kmToX(16.8), kmToY(1.5));
+        ctx.bezierCurveTo(kmToX(16.2), kmToY(0.6), kmToX(14.5), kmToY(0.4), kmToX(12.8), kmToY(0.4));
+        ctx.stroke();
+        drawArrow(ctx, kmToX(13.2), kmToY(0.4), kmToX(12.2), kmToY(0.4), 8);
+
+        ctx.beginPath();
+        ctx.moveTo(kmToX(16.8), kmToY(1.5));
+        ctx.bezierCurveTo(kmToX(17.5), kmToY(0.6), kmToX(19.0), kmToY(0.4), kmToX(20.5), kmToY(0.4));
+        ctx.stroke();
+        drawArrow(ctx, kmToX(20.0), kmToY(0.4), kmToX(21.0), kmToY(0.4), 8);
+
+        // Spotlight highlight if selected
+        if (multicellHighlight !== 'all') {
+          ctx.save();
+          ctx.strokeStyle = '#f59e0b';
+          ctx.lineWidth = 2.0;
+          ctx.setLineDash([6, 4]);
+          let hX = 0, hW = 0, hZTop = 0;
+          if (multicellHighlight === 'IV') { hX = 1.6; hW = 3.6; hZTop = 6.6; }
+          else if (multicellHighlight === 'III') { hX = 5.2; hW = 4.0; hZTop = 11.0; }
+          else if (multicellHighlight === 'II') { hX = 9.2; hW = 4.4; hZTop = 15.6; }
+          else if (multicellHighlight === 'I') { hX = 13.6; hW = 8.0; hZTop = 14.2; }
+          else if (multicellHighlight === 'gust_front') { hX = 8.8; hW = 5.0; hZTop = 4.2; }
+          ctx.strokeRect(kmToX(hX), kmToY(hZTop), (hW / 22.0) * width, (hZTop / 16.0) * (groundY - topY));
+          ctx.restore();
+        }
+
+        // Título e Descritivo Científico (posicionado no céu aberto acima de IV e III)
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 11px JetBrains Mono, monospace';
+        ctx.fillText('Tempestade Muito Forte (Linha de Flanco: IV → III → II → I)', kmToX(1.4), kmToY(13.8));
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.85)';
+        ctx.font = '9px JetBrains Mono, monospace';
+        ctx.fillText('Elo Intermediário: Frente de Rajada regenera continuamente novas células', kmToX(1.4), kmToY(13.2));
 
       } else {
         // Supercélula com bigorna gigante, overshooting top e corte inclinado
@@ -473,7 +755,7 @@ export const SimulationCanvas: React.FC = () => {
       ctx.restore();
 
       // 5. CONVECTIVE UP/DOWNDRAFT CURRENTS (ONLY DRAWN IN CONVECTIVE FAMILY!)
-      if (isConvective && useSimulationStore.getState().showWindField) {
+      if (isConvective && scenario !== 'tempestade_comum' && scenario !== 'tempestade_forte' && useSimulationStore.getState().showWindField) {
         // Updraft Column
         const xUpBase = engine.wind.getUpdraftX(1.5, engine.params.updraftTiltDeg);
         const xUpTop = engine.wind.getUpdraftX(11.5, engine.params.updraftTiltDeg);
@@ -768,7 +1050,7 @@ export const SimulationCanvas: React.FC = () => {
     const topY = 28;
 
     const clickXKm = (clickX / width) * 22.0;
-    const clickZKm = Math.max(0, ((groundY - clickY) / (groundY - topY)) * 14.0);
+    const clickZKm = Math.max(0, ((groundY - clickY) / (groundY - topY)) * 16.0);
 
     const engine = engineRef.current;
     if (!engine) return;
@@ -919,6 +1201,87 @@ export const SimulationCanvas: React.FC = () => {
                 <strong> 20 min</strong> (estagio maduro com bigorna em 11 km, nucleo maximo 5 e surgimento do downdraft com chuva); 
                 <strong> 25 a 30 min</strong> (dissipacao com downdraft dominante sufocando a tempestade).
               </p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Multicell Severe Storm Interactive Explanatory Bar */}
+      {activeScenario === 'tempestade_forte' && (
+        <div className="bg-slate-900/95 border-t border-slate-800 p-2.5 sm:p-3 text-xs space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-1 rounded-lg bg-amber-950 border border-amber-800 text-amber-300 font-bold text-xs flex items-center gap-1">
+                ⚡ Tempestade Muito Forte (Multicelular)
+              </span>
+              <span className="text-[11px] text-slate-300 hidden md:inline">
+                Meio-termo entre tempestade comum e multicélula persistente
+              </span>
+            </div>
+
+            {/* Reference Diagram Toggle */}
+            <button
+              onClick={() => setShowMulticellModal(!showMulticellModal)}
+              className="px-2.5 py-1 rounded-lg bg-amber-950 border border-amber-800 text-amber-300 hover:bg-amber-900 font-bold text-xs flex items-center gap-1 transition shadow"
+            >
+              📖 {showMulticellModal ? 'Ocultar Diagrama de Referência' : 'Ver Diagrama da Tempestade Muito Forte'}
+            </button>
+          </div>
+
+          {/* Quick jump to examine cell stages */}
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-1 pt-1">
+            {[
+              { key: 'all', label: 'Todas as Células' },
+              { key: 'IV', label: 'Célula IV: Flanco (6 km)' },
+              { key: 'III', label: 'Célula III: Congestus (10 km)' },
+              { key: 'II', label: 'Célula II: Ápice (15 km)' },
+              { key: 'I', label: 'Célula I: Chuva & Downdraft' },
+              { key: 'gust_front', label: 'Frente de Rajada (Solo)' }
+            ].map((c) => (
+              <button
+                key={c.key}
+                onClick={() => setMulticellHighlight(c.key as any)}
+                className={`px-2 py-1 rounded text-[10px] font-semibold border transition text-center ${
+                  multicellHighlight === c.key
+                    ? 'bg-amber-950 border-amber-400 text-amber-300 font-bold shadow'
+                    : 'bg-slate-800/80 border-slate-700 text-slate-400 hover:text-white'
+                }`}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Modal / Card showing Multicell Storm Diagram */}
+          {showMulticellModal && (
+            <div className="p-3 bg-slate-950 border border-amber-800/60 rounded-xl space-y-2 mt-2">
+              <div className="flex justify-between items-center border-b border-slate-800 pb-1.5">
+                <h5 className="font-bold text-amber-300 text-xs flex items-center gap-1.5">
+                  <span>📊</span> Diagrama de Referência: Tempestade Muito Forte / Multicelular com Linha de Flanco
+                </h5>
+                <button
+                  onClick={() => setShowMulticellModal(false)}
+                  className="text-slate-400 hover:text-white text-xs px-2 py-0.5 rounded bg-slate-800"
+                >
+                  ✕ Fechar
+                </button>
+              </div>
+              <img
+                src="./assets/multicell_storm_diagram.png"
+                alt="Diagrama da Tempestade Muito Forte - Multicelular"
+                className="w-full max-h-80 object-contain rounded-lg bg-white p-2"
+              />
+              <div className="text-[11px] text-slate-300 space-y-1.5 leading-relaxed bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
+                <p>
+                  <strong>Por que é um meio-termo entre tempestade comum e multicélula?</strong> Na tempestade comum de Byers & Braham (1949), a corrente descendente cai sobre a ascendente e a asfixia em 30 minutos. Na tempestade muito forte, a <strong>separação espacial</strong> entre a subida (Célula II) e a descida (Célula I) permite regeneração sucessiva.
+                </p>
+                <p>
+                  <strong>O papel da Frente de Rajada (Gust Front):</strong> O ar frio gerado pela evaporação da precipitação na Célula I atinge o solo e se espalha para a esquerda como uma cunha densa (marcada com triângulos pretos). Essa cunha força o ar quente da superfície a subir explosivamente, gerando a Célula II e alimentando novas células na linha de flanco (IV e III).
+                </p>
+                <p>
+                  <strong>Núcleos de Refletividade:</strong> O contorno de <strong>10 dBZ (laranja)</strong> abrange a bigorna e a borda da tempestade; <strong>30 dBZ (magenta)</strong> marca a coluna principal de chuva; e <strong>50 dBZ (vermelho no solo e magenta no topo da Célula II)</strong> marca onde o granizo cresce sustentado pelo updraft e despenca em direção à superfície.
+                </p>
+              </div>
             </div>
           )}
         </div>

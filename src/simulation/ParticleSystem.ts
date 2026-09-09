@@ -1,4 +1,4 @@
-import { ParticleType, GrowthRegime, ParticleTelemetry, LayerRecord } from '../types/simulationTypes';
+import { ParticleType, GrowthRegime, ParticleTelemetry, LayerRecord, ScenarioPreset } from '../types/simulationTypes';
 import { HailstonePhysics } from './HailstonePhysics';
 import { globalRNG } from './RandomGenerator';
 
@@ -60,14 +60,19 @@ export class ParticleSystem {
     }
   }
 
-  public init(numParticles: number, isConvective: boolean): void {
+  public init(numParticles: number, isConvective: boolean, scenario?: ScenarioPreset): void {
     this.activeCount = Math.min(numParticles, this.capacity);
     for (let i = 0; i < this.activeCount; i++) {
-      this.spawnParticle(i, isConvective, true);
+      this.spawnParticle(i, isConvective, true, scenario);
     }
   }
 
-  public spawnParticle(index: number, isConvective: boolean, isInitial: boolean = false): void {
+  public spawnParticle(
+    index: number,
+    isConvective: boolean,
+    isInitial: boolean = false,
+    scenario?: ScenarioPreset
+  ): void {
     if (!isConvective) {
       // THERMODYNAMIC NOAA MODE: Spawns aloft as SNOWFLAKES falling from stratiform cloud
       this.positionsX[index] = globalRNG.range(2.5, 19.5);
@@ -89,6 +94,59 @@ export class ParticleSystem {
       this.freezeProgress[index] = 0.0;
       this.alive[index] = 1;
       this.prevVz[index] = this.velocitiesZ[index];
+    } else if (scenario === 'tempestade_forte') {
+      // MULTICELL CONVECTIVE STORM: Line of flank (IV, III), mature core (II) and rain shaft (I)
+      if (isInitial) {
+        const rand = globalRNG.next();
+        if (rand < 0.25) {
+          // Cell IV (Flanking line)
+          this.positionsX[index] = globalRNG.range(2.8, 4.8);
+          this.positionsZ[index] = globalRNG.range(2.2, 5.5);
+          this.velocitiesX[index] = globalRNG.range(2.0, 5.0);
+          this.velocitiesZ[index] = globalRNG.range(2.0, 6.0);
+        } else if (rand < 0.55) {
+          // Cell III (Growing Congestus)
+          this.positionsX[index] = globalRNG.range(5.8, 8.5);
+          this.positionsZ[index] = globalRNG.range(3.0, 9.5);
+          this.velocitiesX[index] = globalRNG.range(2.0, 6.0);
+          this.velocitiesZ[index] = globalRNG.range(5.0, 14.0);
+        } else if (rand < 0.82) {
+          // Cell II (Mature peak updraft & 50 dBZ core)
+          this.positionsX[index] = globalRNG.range(9.8, 12.5);
+          this.positionsZ[index] = globalRNG.range(4.5, 13.5);
+          this.velocitiesX[index] = globalRNG.range(1.0, 4.0);
+          this.velocitiesZ[index] = globalRNG.range(8.0, 20.0);
+        } else {
+          // Cell I (Precipitation & downdraft shaft)
+          this.positionsX[index] = globalRNG.range(14.2, 17.8);
+          this.positionsZ[index] = globalRNG.range(2.0, 8.5);
+          this.velocitiesX[index] = globalRNG.range(1.0, 3.0);
+          this.velocitiesZ[index] = globalRNG.range(-8.0, -14.0);
+        }
+      } else {
+        // Respawn: Spawns in boundary layer / flanking line feeding into gust front
+        this.positionsX[index] = globalRNG.range(2.2, 7.5);
+        this.positionsZ[index] = globalRNG.range(1.2, 3.0);
+        this.velocitiesX[index] = globalRNG.range(4.0, 8.5);
+        this.velocitiesZ[index] = globalRNG.range(1.5, 5.0);
+      }
+      this.prevVz[index] = this.velocitiesZ[index];
+
+      const type = ParticleType.GRAUPEL;
+      const diamMm = globalRNG.range(2.0, 4.0);
+      this.types[index] = type;
+      this.diameters[index] = diamMm;
+      const density = HailstonePhysics.getDensity(diamMm, false);
+      this.masses[index] = HailstonePhysics.massFromDiameter(diamMm, density);
+      this.regimes[index] = GrowthRegime.DRY;
+      this.layers[index] = 1;
+      this.recirculations[index] = 0;
+      this.waterCollected[index] = 0;
+      this.frozenFractions[index] = 1.0;
+      this.meltedFractions[index] = 0.0;
+      this.meltProgress[index] = 0.0;
+      this.freezeProgress[index] = 0.0;
+      this.alive[index] = 1;
     } else {
       // CONVECTIVE STORM MODE: Spawns near inflow base as small GRAUPEL embryos
       const xBase = 8.5;

@@ -33,67 +33,68 @@ export const EducationalPanel: React.FC = () => {
   const currentStage = useSimulationStore((state) => state.params.currentStage);
   const setStage = useSimulationStore((state) => state.setStage);
 
+  const activeScenario = useSimulationStore((state) => state.activeScenario);
   const activeInfo = STAGE_DETAILS.find((s) => s.num === currentStage) || STAGE_DETAILS[3];
 
-  return (
-    <div className="bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-2xl p-4 shadow-xl space-y-3">
-      
-      {/* Stage Stepper Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold uppercase tracking-wider text-cyan-400 bg-cyan-950 border border-cyan-800/80 px-2.5 py-1 rounded-lg">
-            Evolução da Tempestade
-          </span>
-          <span className="text-xs font-mono text-slate-300 font-bold">
-            Etapa {currentStage} de 4
+  if (activeScenario === 'tempestade_forte') {
+    return (
+      <div className="bg-slate-900/95 backdrop-blur-md border border-amber-900/60 rounded-2xl p-4 shadow-xl space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-2.5">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-amber-400 bg-amber-950 border border-amber-800/80 px-2.5 py-1 rounded-lg">
+              Tempestade Muito Forte (Multicelular)
+            </span>
+            <span className="text-xs font-mono text-slate-300">
+              Elo Intermediário: Convecção Multicelular com Linha de Flanco
+            </span>
+          </div>
+          <span className="text-[11px] font-mono text-amber-300/80">
+            Regeneração Contínua por Frente de Rajada
           </span>
         </div>
 
-        {/* Buttons 1-4 */}
-        <div className="flex items-center gap-1.5 flex-1 max-w-xl">
-          {STAGE_DETAILS.map((s) => (
-            <button
-              key={s.num}
-              onClick={() => setStage(s.num)}
-              className={`flex-1 py-1 px-2 rounded-lg text-xs font-semibold border transition text-center ${
-                s.num === currentStage
-                  ? 'bg-cyan-600 border-cyan-400 text-white shadow'
-                  : 'bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              {s.num}. {s.short}
-            </button>
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2 text-xs">
+          <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1">
+            <span className="text-amber-400 font-bold text-[11px] flex items-center gap-1">
+              🌱 Célula IV (Flanco)
+            </span>
+            <p className="text-slate-400 text-[10px] leading-relaxed">
+              Cumulus incipiente (topo 6 km). Ar quente da camada limite ascende suavemente, iniciando os primeiros embriões de graupel.
+            </p>
+          </div>
+
+          <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1">
+            <span className="text-amber-400 font-bold text-[11px] flex items-center gap-1">
+              📈 Célula III (Congestus)
+            </span>
+            <p className="text-slate-400 text-[10px] leading-relaxed">
+              Torre em rápida ascensão (topo 10 km). Corrente vertical acelerada acumula gotículas super-resfriadas e faz o graupel crescer.
+            </p>
+          </div>
+
+          <div className="p-2.5 rounded-xl bg-slate-950/80 border border-amber-800/60 space-y-1">
+            <span className="text-pink-400 font-bold text-[11px] flex items-center gap-1">
+              ⚡ Célula II (Ápice 15 km)
+            </span>
+            <p className="text-slate-400 text-[10px] leading-relaxed">
+              Topo penetrante a 15 km com núcleo de 50 dBZ. Updraft potente (30 m/s) impulsionado pelo choque com a frente de rajada.
+            </p>
+          </div>
+
+          <div className="p-2.5 rounded-xl bg-slate-950/80 border border-red-900/60 space-y-1">
+            <span className="text-red-400 font-bold text-[11px] flex items-center gap-1">
+              🌧️ Célula I (Precipitação)
+            </span>
+            <p className="text-slate-400 text-[10px] leading-relaxed">
+              Bigorna downstream, cortina torrencial (30/50 dBZ) e downdraft (-15 m/s) cuja piscina fria alimenta a frente de rajada no solo.
+            </p>
+          </div>
         </div>
 
-        {/* Stepper controls */}
-        <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => setStage(currentStage > 1 ? currentStage - 1 : 4)}
-            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700"
-            title="Etapa Anterior"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          <button
-            onClick={() => setStage(currentStage < 4 ? currentStage + 1 : 1)}
-            className="px-2.5 py-1 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold shadow flex items-center gap-1"
-          >
-            Avançar <ChevronRight className="w-3.5 h-3.5" />
-          </button>
+        <div className="text-[11px] text-slate-300 leading-relaxed bg-slate-950/90 border border-amber-500/30 rounded-xl p-2.5">
+          💡 <strong>Conceito Fundamental:</strong> Ao contrário da tempestade comum monocelular (que se extingue aos 30 min porque o downdraft sufoca seu updraft), a tempestade muito forte desacopla espacialmente a subida e a descida. A piscina fria gerada pelo downdraft da Célula I atua como uma cunha densa (frente de rajada), forçando o ar quente a subir e criar sucessivamente novas células (IV → III → II → I).
         </div>
       </div>
-
-      {/* Active Stage Description Banner */}
-      <div className="text-xs text-slate-300 leading-relaxed bg-slate-950/80 border border-cyan-500/30 rounded-xl p-3">
-        <h4 className="font-bold text-cyan-300 text-xs uppercase tracking-wide mb-1">
-          {activeInfo.title}
-        </h4>
-        <p className="text-slate-400 text-[11px]">
-          {activeInfo.desc}
-        </p>
-      </div>
-
-    </div>
-  );
+    );
+  }
 };

@@ -20,8 +20,11 @@ export class WindField {
     return xBaseDown + 0.12 * zKm;
   }
 
-  public isInsideDowndraft(xKm: number, zKm: number): boolean {
+  public isInsideDowndraft(xKm: number, zKm: number, scenario?: string): boolean {
     if (zKm > 10.5) return false;
+    if (scenario === 'tempestade_forte') {
+      return xKm >= 14.0 && xKm <= 18.5;
+    }
     const xCenter = this.getDowndraftX(zKm);
     const halfWidth = 2.4; // km
     return Math.abs(xKm - xCenter) <= halfWidth;
@@ -33,13 +36,18 @@ export class WindField {
     tSec: number,
     params: SimulationParams
   ): { u: number; w: number } {
-    if (zKm < 0.1 || zKm > 13.8) {
+    if (zKm < 0.1 || zKm > 15.5) {
       return { u: 0, w: 0 };
     }
 
     // Specialized physical lifecycle for Byers & Braham (1949) Ordinary Cell (Tempestade Comum)
     if (params.activeScenario === 'tempestade_comum') {
       return this.evaluateOrdinaryCell(xKm, zKm, tSec, params);
+    }
+
+    // Specialized Multicell Flanking Line System (Tempestade Muito Forte)
+    if (params.activeScenario === 'tempestade_forte') {
+      return this.evaluateMulticellStorm(xKm, zKm, tSec, params);
     }
 
     // 1. Updraft Core: tilted upward jet
@@ -199,6 +207,111 @@ export class WindField {
     };
   }
 
+  public evaluateMulticellStorm(
+    xKm: number,
+    zKm: number,
+    tSec: number,
+    params: SimulationParams
+  ): { u: number; w: number } {
+    if (zKm < 0.05 || zKm > 15.5) {
+      return { u: 0, w: 0 };
+    }
+
+    // 1. CÉLULA IV (Linha de Flanco, x ~ 3.8 km, topo ~ 6.0 km)
+    const dxIV = xKm - 3.8;
+    const wIVHoriz = Math.exp(-(dxIV * dxIV) / (2 * 1.2 * 1.2));
+    let wIV = 0;
+    if (zKm <= 6.5) {
+      const vertIV = Math.sin((zKm / 6.5) * Math.PI);
+      wIV = 10.0 * Math.max(0, vertIV) * wIVHoriz;
+    }
+
+    // 2. CÉLULA III (Congestus em crescimento acelerado, x ~ 7.2 km, topo ~ 10.5 km)
+    const dxIII = xKm - 7.2;
+    const wIIIHoriz = Math.exp(-(dxIII * dxIII) / (2 * 1.4 * 1.4));
+    let wIII = 0;
+    if (zKm <= 11.0) {
+      const vertIII = Math.sin((zKm / 11.0) * Math.PI);
+      wIII = 20.0 * Math.max(0, vertIII) * wIIIHoriz;
+    }
+
+    // 3. CÉLULA II (Célula madura vigorosa / Ápice convectivo com topo a 15 km)
+    // Updraft sobe ligeiramente inclinado a partir da frente de rajada (x ~ 10.4 km na base até 11.6 km no topo)
+    const xUpII = 10.4 + (zKm / 15.0) * 1.2;
+    const dxII = xKm - xUpII;
+    const wIIHoriz = Math.exp(-(dxII * dxII) / (2 * 1.8 * 1.8));
+    let wII = 0;
+    if (zKm <= 15.3) {
+      const vertII = Math.sin((zKm / 15.3) * Math.PI);
+      wII = 34.0 * Math.pow(Math.max(0, vertII), 0.85) * wIIHoriz;
+    }
+
+    // 4. CÉLULA I (Célula em dissipação / Downdraft pesado de chuva e granizo, x ~ 16.2 km)
+    const dxI = xKm - 16.2;
+    const wIHoriz = Math.exp(-(dxI * dxI) / (2 * 2.1 * 2.1));
+    let wI = 0;
+    if (zKm <= 10.5 && zKm >= 0.2) {
+      const vertI = Math.sin((zKm / 11.0) * Math.PI);
+      const intensity = zKm < 2.0 ? 0.75 : Math.max(0.4, vertI);
+      wI = -15.0 * intensity * wIHoriz;
+    }
+
+    // 5. HORIZONTAL FLOWS (INFLOW, GUST FRONT, COLD POOL, RECIRCULATION, ANVIL DIVERGENCE)
+    let uInflow = 0;
+    let uColdPool = 0;
+    let uDivergence = 0;
+    let uRecirc = 0;
+
+    // A. Inflow da Camada Limite (ar quente da esquerda alimentando IV, III e II):
+    if (zKm < 2.8 && xKm < 11.0) {
+      uInflow = 9.0 * (1.0 - zKm / 3.0);
+    }
+
+    // B. Piscina Fria (Cold Pool) e Frente de Rajada geradas pelo downdraft da Célula I:
+    // O downdraft colide com o solo em x ~ 16.2 km e diverge para a esquerda (x: 9.8 -> 16.2) e direita (x > 16.2)
+    if (zKm < 2.2) {
+      const surfaceFactor = 1.0 - zKm / 2.2;
+      if (xKm >= 9.8 && xKm <= 16.2) {
+        // Forte vento de saída (outflow / rajada) soprando para a esquerda em direção à frente de rajada!
+        uColdPool = -13.5 * surfaceFactor;
+      } else if (xKm > 16.2) {
+        uColdPool = 8.5 * surfaceFactor;
+      }
+    }
+
+    // C. Ascensão Forçada na Frente de Rajada (Gust Front) em x ~ 10.0 a 11.2 km:
+    let wGustFront = 0;
+    if (zKm < 4.0 && Math.abs(xKm - 10.4) < 1.0) {
+      wGustFront = 8.0 * (1.0 - Math.abs(xKm - 10.4)) * (1.0 - zKm / 4.0);
+    }
+
+    // D. Divergência na Alta Troposfera e Bigorna da Célula II e I (z > 11.0 km):
+    if (zKm > 11.0) {
+      const divStrength = Math.min(1.0, (zKm - 11.0) / 3.5);
+      if (dxII < 0) {
+        // Ramo divergente para a esquerda
+        uDivergence = -8.0 * divStrength;
+      } else {
+        // Ramo divergente para a direita soprando em direção à bigorna da Célula I
+        uDivergence = 14.0 * divStrength;
+      }
+    }
+
+    // E. Recirculação em médios níveis (entre II e I, z ~ 4 a 9 km):
+    if (zKm >= 4.0 && zKm <= 9.0 && xKm > 12.0 && xKm < 15.0) {
+      uRecirc = -4.0 * Math.sin(((zKm - 4.0) / 5.0) * Math.PI);
+    }
+
+    const turbAmp = params.turbulenceIntensity * 2.0;
+    const wTurb = this.noise2D(xKm * 0.35, zKm * 0.35 + tSec * 0.45) * turbAmp;
+    const uTurb = this.noise2D(xKm * 0.35 + 18, zKm * 0.35 - tSec * 0.45) * turbAmp;
+
+    return {
+      u: uInflow + uColdPool + uDivergence + uRecirc + uTurb,
+      w: wIV + wIII + wII + wI + wGustFront + wTurb
+    };
+  }
+
   public getLWC(xKm: number, zKm: number, params: SimulationParams, T: number): number {
     if (T < -40.0 || T > 12.0 || zKm < 1.5) return 0;
 
@@ -220,6 +333,31 @@ export class WindField {
         coreMax = Math.max(0.2, 4.8 * (1.0 - (tMin - 22.0) / 8.0)); // depleting
       }
       return coreMax * horizFactor;
+    }
+
+    if (params.activeScenario === 'tempestade_forte') {
+      // Cell IV: modest LWC ~ 1.0 g/m3
+      const dxIV = Math.abs(xKm - 3.8);
+      const lwcIV = dxIV < 1.5 && zKm < 6.0 ? 1.0 * Math.exp(-(dxIV * dxIV) / 1.5) : 0;
+
+      // Cell III: moderate LWC ~ 2.2 g/m3
+      const dxIII = Math.abs(xKm - 7.2);
+      const lwcIII = dxIII < 1.8 && zKm < 10.0 ? 2.2 * Math.exp(-(dxIII * dxIII) / 2.0) : 0;
+
+      // Cell II: High LWC core (50 dBZ suspended core) ~ 4.6 g/m3
+      const dxII = Math.abs(xKm - 11.0);
+      let lwcII = 0;
+      if (dxII < 2.5 && zKm >= 3.5 && zKm <= 13.5) {
+        let profile = Math.sin(((zKm - 3.5) / 10.0) * Math.PI);
+        if (zKm >= 9.0 && zKm <= 12.5) profile = Math.max(0.95, profile);
+        lwcII = 4.6 * profile * Math.exp(-(dxII * dxII) / 2.5);
+      }
+
+      // Cell I: precipitation zone
+      const dxI = Math.abs(xKm - 16.2);
+      const lwcI = dxI < 2.5 && zKm < 10.0 ? 0.6 * Math.exp(-(dxI * dxI) / 3.0) : 0;
+
+      return Math.max(lwcIV, lwcIII, lwcII, lwcI, 0.1);
     }
 
     const xUp = this.getUpdraftX(zKm, params.updraftTiltDeg);

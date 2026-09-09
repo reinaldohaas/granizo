@@ -14,8 +14,8 @@ export const ScenarioSelector: React.FC = () => {
   ];
 
   const convectivePresets: Array<{ key: ScenarioPreset; name: string; emoji: string; desc: string }> = [
-    { key: 'tempestade_comum', name: 'Tempestade Comum', emoji: '🟢', desc: 'Updraft moderado (12 m/s). Formação de graupel e chuva com granizo esporádico.' },
-    { key: 'tempestade_forte', name: 'Tempestade Forte', emoji: '🟡', desc: 'Updraft forte (28 m/s). Múltiplos ciclos de recirculação e granizo médio.' },
+    { key: 'tempestade_comum', name: 'Tempestade Comum', emoji: '🟢', desc: 'Ciclo clássico Byers & Braham (1949): cumulus, maduro com downdraft e dissipação em 30 min.' },
+    { key: 'tempestade_forte', name: 'Tempestade Forte (Multicelular)', emoji: '🟡', desc: 'Multicelular com linha de flanco (estágios IV, III, II, I), frente de rajada e núcleos 10, 30, 50 dBZ.' },
     { key: 'supercelula', name: 'Supercélula', emoji: '🔴', desc: 'Updraft violento (48 m/s), núcleo inclinado e granizo gigante (> 5 cm).' }
   ];
 
