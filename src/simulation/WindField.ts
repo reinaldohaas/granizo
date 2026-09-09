@@ -9,97 +9,111 @@ export class WindField {
     this.noise2D = createNoise2D(() => globalRNG.next());
   }
 
-  /**
-   * Evaluates wind field at position (xKm, zKm) and time tSec
-   * Returns [u_ar, w_ar] in m/s
-   */
+  public getUpdraftX(zKm: number, tiltDeg: number): number {
+    const xBase = 8.5; // km
+    const tiltOffset = Math.tan((tiltDeg * Math.PI) / 180) * zKm;
+    return xBase + tiltOffset;
+  }
+
+  public getDowndraftX(zKm: number): number {
+    const xBaseDown = 15.2; // km
+    return xBaseDown + 0.12 * zKm;
+  }
+
+  public isInsideDowndraft(xKm: number, zKm: number): boolean {
+    if (zKm > 10.5) return false;
+    const xCenter = this.getDowndraftX(zKm);
+    const halfWidth = 2.4; // km
+    return Math.abs(xKm - xCenter) <= halfWidth;
+  }
+
   public evaluate(
     xKm: number,
     zKm: number,
     tSec: number,
     params: SimulationParams
   ): { u: number; w: number } {
-    if (zKm < 0.2 || zKm > 13.5) {
+    if (zKm < 0.1 || zKm > 13.8) {
       return { u: 0, w: 0 };
     }
 
-    // Updraft core center x_c(z) with tilt
-    const xBase = 10.0; // km
-    const tiltOffset = Math.tan((params.updraftTiltDeg * Math.PI) / 180) * zKm;
-    const xCenter = xBase + tiltOffset;
+    // 1. Updraft Core: tilted upward jet
+    const xUp = this.getUpdraftX(zKm, params.updraftTiltDeg);
+    const halfWidthUp = Math.max(0.6, params.updraftWidthKm * 0.7);
+    const dxUp = xKm - xUp;
+    const rSqUp = (dxUp * dxUp) / (2 * halfWidthUp * halfWidthUp);
+    const horizProfileUp = Math.exp(-rSqUp);
 
-    // Updraft radius
-    const halfWidth = Math.max(0.4, params.updraftWidthKm / 2);
-    const dx = xKm - xCenter;
+    let vertProfileUp = Math.sin((zKm / 13.5) * Math.PI);
+    if (zKm < 2.5) vertProfileUp *= 0.65;
 
-    // Horizontal Gaussian factor
-    const rSq = (dx * dx) / (2 * halfWidth * halfWidth);
-    const horizProfile = Math.exp(-rSq);
-
-    // Vertical sine factor peaking around mid levels (6 to 8 km)
-    let vertProfile = Math.sin((zKm / 13.0) * Math.PI);
-    if (zKm < 3.0) vertProfile *= 0.6; // weaker near inflow base
-
-    // Stage speed multiplier
     let stageMultiplier = 1.0;
-    if (params.currentStage === 1) stageMultiplier = 0.12; // 2 - 5 m/s
-    else if (params.currentStage === 2) stageMultiplier = 0.65; // 15 - 25 m/s
-    else if (params.currentStage >= 3) stageMultiplier = 1.0;  // 30 - 50 m/s
+    if (params.currentStage === 1) stageMultiplier = 0.25;
+    else if (params.currentStage === 2) stageMultiplier = 0.7;
+    else stageMultiplier = 1.0;
 
-    // Core vertical wind w_corrente
-    const wCore = params.wMax * stageMultiplier * vertProfile * horizProfile;
+    const wUpdraft = params.wMax * stageMultiplier * vertProfileUp * horizProfileUp;
 
-    // Compensating peripheral downdraft on flanks
-    let wDowndraft = 0;
-    if (Math.abs(dx) > halfWidth * 1.5 && Math.abs(dx) < halfWidth * 3.5 && zKm < 10.0) {
-      wDowndraft = -0.25 * params.wMax * stageMultiplier * Math.sin((zKm / 10.0) * Math.PI);
+    // 2. Downdraft Core (Corrente Descendente): cold downward jet in precipitation shaft
+    const xDown = this.getDowndraftX(zKm);
+    const halfWidthDown = 2.0; // km
+    const dxDown = xKm - xDown;
+    const rSqDown = (dxDown * dxDown) / (2 * halfWidthDown * halfWidthDown);
+    const horizProfileDown = Math.exp(-rSqDown);
+
+    let vertProfileDown = 0;
+    if (zKm <= 9.5) {
+      vertProfileDown = Math.sin((zKm / 10.0) * Math.PI);
+      if (zKm < 3.0) vertProfileDown = Math.max(0.5, vertProfileDown);
+    }
+    const maxDowndraftSpeed = 0.6 * params.wMax * stageMultiplier;
+    const wDowndraft = -maxDowndraftSpeed * vertProfileDown * horizProfileDown;
+
+    // 3. Recirculation flow: pulls falling hailstones at mid-levels back into updraft core
+    let uRecirc = 0;
+    if (zKm >= 3.0 && zKm <= 8.5 && xKm > xUp && xKm < xDown + 1.0) {
+      const vertRecirc = Math.sin(((zKm - 3.0) / 5.5) * Math.PI);
+      uRecirc = -7.5 * vertRecirc * stageMultiplier;
     }
 
-    // Horizontal wind u_ar: environmental shear + cloud inflow/divergence
-    let uEnv = params.shearStrength * (zKm - 1.5);
-    // Inflow at base (z < 3 km)
+    // Inflow at cloud base
     let uInflow = 0;
     if (zKm < 3.0) {
-      uInflow = -Math.sign(dx) * Math.min(6.0, Math.abs(dx) * 1.5);
+      if (xKm < xUp) uInflow = 4.5;
+      else if (xKm > xUp && xKm < xDown) uInflow = -3.5;
     }
-    // Divergence at anvil top (z > 9.5 km)
+
+    // Divergence at anvil summit
     let uDivergence = 0;
-    if (zKm > 9.5) {
-      uDivergence = Math.sign(dx) * Math.min(12.0, (zKm - 9.5) * 3.0);
+    if (zKm > 9.0) {
+      const divFactor = Math.min(1.0, (zKm - 9.0) / 3.0);
+      uDivergence = (dxUp > 0 ? 12.0 : -6.0) * divFactor;
     }
 
-    // Smooth Simplex Noise perturbations
-    const noiseScale = 0.35;
-    const timeScale = 0.4;
-    const turbAmp = params.turbulenceIntensity * 3.5;
-    const wTurb = this.noise2D(xKm * noiseScale, zKm * noiseScale + tSec * timeScale) * turbAmp;
-    const uTurb = this.noise2D(xKm * noiseScale + 10, zKm * noiseScale - tSec * timeScale) * turbAmp;
+    const uShear = params.shearStrength * (zKm - 1.5);
+    const turbAmp = params.turbulenceIntensity * 2.5;
+    const wTurb = this.noise2D(xKm * 0.3, zKm * 0.3 + tSec * 0.4) * turbAmp;
+    const uTurb = this.noise2D(xKm * 0.3 + 15, zKm * 0.3 - tSec * 0.4) * turbAmp;
 
-    const wTotal = wCore + wDowndraft + wTurb;
-    const uTotal = uEnv + uInflow + uDivergence + uTurb;
+    const wTotal = wUpdraft + wDowndraft + wTurb;
+    const uTotal = uShear + uInflow + uRecirc + uDivergence + uTurb;
 
     return { u: uTotal, w: wTotal };
   }
 
-  /**
-   * Supercooled Liquid Water content at (x, z)
-   */
   public getLWC(xKm: number, zKm: number, params: SimulationParams, T: number): number {
-    // LWC is only liquid when T > -40°C
-    if (T < -40.0 || T > 15.0 || zKm < 1.5) return 0;
+    if (T < -40.0 || T > 12.0 || zKm < 1.5) return 0;
 
-    const tiltOffset = Math.tan((params.updraftTiltDeg * Math.PI) / 180) * zKm;
-    const xCenter = 10.0 + tiltOffset;
+    const xUp = this.getUpdraftX(zKm, params.updraftTiltDeg);
     const halfWidth = params.updraftWidthKm * 0.9;
-    const dx = Math.abs(xKm - xCenter);
+    const dx = Math.abs(xKm - xUp);
 
-    if (dx > halfWidth * 2.0) return 0.1; // background moisture
+    if (dx > halfWidth * 2.2) return 0.15;
 
-    // LWC peaks in updraft core between 0°C and -25°C
     const horizFactor = Math.exp(-(dx * dx) / (2 * halfWidth * halfWidth));
     let thermalFactor = 1.0;
     if (T < 0 && T >= -25) thermalFactor = 1.0;
-    else if (T < -25) thermalFactor = Math.max(0.0, 1.0 - ((-25 - T) / 15.0)); // glaciates above -40°C
+    else if (T < -25) thermalFactor = Math.max(0.0, 1.0 - ((-25 - T) / 15.0));
     else thermalFactor = 0.8;
 
     return params.lwcMax * horizFactor * thermalFactor;

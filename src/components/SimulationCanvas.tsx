@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useSimulationStore } from '../store/simulationStore';
 import { SimulationEngine } from '../simulation/SimulationEngine';
 import { ParticleType, GrowthRegime } from '../types/simulationTypes';
@@ -9,29 +9,22 @@ export const SimulationCanvas: React.FC = () => {
   const engineRef = useRef<SimulationEngine | null>(null);
 
   const params = useSimulationStore((state) => state.params);
-  const isRunning = useSimulationStore((state) => state.isRunning);
-  const showTrajectories = useSimulationStore((state) => state.showTrajectories);
-  const showIsotherms = useSimulationStore((state) => state.showIsotherms);
-  const showWindField = useSimulationStore((state) => state.showWindField);
   const selectedParticleId = useSimulationStore((state) => state.selectedParticleId);
 
   const selectParticle = useSimulationStore((state) => state.selectParticle);
   const updateTelemetry = useSimulationStore((state) => state.updateTelemetry);
   const updateGroundStats = useSimulationStore((state) => state.updateGroundStats);
 
-  // Initialize and preserve single SimulationEngine instance
   if (!engineRef.current) {
     engineRef.current = new SimulationEngine(params);
   }
 
-  // Keep engine parameters synchronized
   useEffect(() => {
     if (engineRef.current) {
       engineRef.current.params = { ...params };
     }
   }, [params]);
 
-  // Main 60 FPS Canvas 2D Loop with High-DPI support
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -54,13 +47,11 @@ export const SimulationCanvas: React.FC = () => {
         return;
       }
 
-      // Physics update if unpaused
       if (useSimulationStore.getState().isRunning) {
         engine.update(dtSec);
       }
 
-      // Sync React state throttled to ~8 Hz
-      if (now - lastReactSync > 120) {
+      if (now - lastReactSync > 100) {
         lastReactSync = now;
         const selIdx = useSimulationStore.getState().selectedParticleId - 1;
         if (selIdx >= 0 && selIdx < engine.particles.activeCount) {
@@ -75,90 +66,182 @@ export const SimulationCanvas: React.FC = () => {
         updateGroundStats(engine.groundStats);
       }
 
-      // Visual Canvas Dimensions
       const width = canvas.width;
       const height = canvas.height;
 
-      // Coordinate scaling:
-      // X domain: 0 to 22 km mapped to [0, width]
-      // Z domain: 0 to 14 km mapped to [groundY, topY]
-      const groundY = height - 42;
+      const groundY = height - 44;
       const topY = 28;
       const kmToX = (xKm: number) => (xKm / 22.0) * width;
       const kmToY = (zKm: number) => groundY - (zKm / 14.0) * (groundY - topY);
 
-      // 1. Clear & Background Sky
+      // 1. Sky Gradient Background
       const skyGrad = ctx.createLinearGradient(0, 0, 0, height);
-      skyGrad.addColorStop(0, '#030712');
-      skyGrad.addColorStop(0.65, '#090d16');
+      skyGrad.addColorStop(0, '#020617');
+      skyGrad.addColorStop(0.65, '#0b1120');
       skyGrad.addColorStop(1, '#0f172a');
       ctx.fillStyle = skyGrad;
       ctx.fillRect(0, 0, width, height);
 
-      // 2. Warm Lower Layer (T > 0°C) Tint
+      // 2. Warm Lower Layer (T > 0°C)
       const fzY = kmToY(engine.params.zFreezingKm);
-      ctx.fillStyle = 'rgba(239, 68, 68, 0.05)';
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.04)';
       ctx.fillRect(0, fzY, width, groundY - fzY);
 
-      // 3. Hail Growth Zone (-10°C to -30°C) Highlight
+      // 3. Hail Growth Zone (-10°C to -30°C)
       const iso = engine.atmos.getIsothermAltitudes(engine.params.zFreezingKm);
       const yM10 = kmToY(iso.zMinus10C);
       const yM30 = kmToY(iso.zMinus30C);
-      ctx.fillStyle = 'rgba(14, 165, 233, 0.07)';
+      ctx.fillStyle = 'rgba(14, 165, 233, 0.06)';
       ctx.fillRect(kmToX(1.0), yM30, kmToX(20.0), yM10 - yM30);
 
-      // Growth Zone Border
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
-      ctx.lineWidth = 1;
-      ctx.setLineDash([4, 4]);
-      ctx.strokeRect(kmToX(1.0), yM30, kmToX(20.0), yM10 - yM30);
-      ctx.setLineDash([]);
-
-      // Label for Growth Zone
-      ctx.fillStyle = 'rgba(56, 189, 248, 0.6)';
-      ctx.font = '10px Inter, sans-serif';
-      ctx.fillText('ZONA PRINCIPAL DE CRESCIMENTO DE GRANIZO (-10°C a -30°C)', kmToX(1.5), yM30 + 14);
-
-      // 4. Cloud Silhouette (Nuvem Convectiva Profunda)
+      // 4. Cloud Silhouette (Deep Convection)
       const tiltX = (engine.params.updraftTiltDeg / 25.0) * 4.0;
-      const xBase = 10.5;
+      const xBase = 8.5;
 
       ctx.save();
       ctx.beginPath();
-      ctx.moveTo(kmToX(xBase - 3.8), kmToY(1.2));
+      ctx.moveTo(kmToX(xBase - 3.2), kmToY(1.2));
       // Left updraft flank
       ctx.bezierCurveTo(
-        kmToX(xBase - 5.0), kmToY(4.5),
-        kmToX(xBase - 5.5 + tiltX * 0.4), kmToY(8.5),
-        kmToX(xBase - 7.0 + tiltX), kmToY(12.2)
+        kmToX(xBase - 4.5), kmToY(4.5),
+        kmToX(xBase - 5.0 + tiltX * 0.4), kmToY(8.5),
+        kmToX(xBase - 6.2 + tiltX), kmToY(12.2)
       );
-      // Anvil top with overshooting dome
+      // Anvil dome
       ctx.bezierCurveTo(
-        kmToX(xBase - 3.5 + tiltX), kmToY(13.4),
-        kmToX(xBase + 3.5 + tiltX), kmToY(13.2),
-        kmToX(xBase + 8.5 + tiltX), kmToY(11.5)
+        kmToX(xBase - 3.0 + tiltX), kmToY(13.4),
+        kmToX(xBase + 4.0 + tiltX), kmToY(13.2),
+        kmToX(xBase + 10.5 + tiltX), kmToY(11.4)
       );
-      // Right downdraft / anvil flank
+      // Right downdraft flank
       ctx.bezierCurveTo(
-        kmToX(xBase + 6.2 + tiltX * 0.6), kmToY(8.0),
-        kmToX(xBase + 5.2), kmToY(4.0),
-        kmToX(xBase + 4.2), kmToY(1.2)
+        kmToX(xBase + 8.5 + tiltX * 0.6), kmToY(7.5),
+        kmToX(xBase + 7.5), kmToY(3.5),
+        kmToX(xBase + 6.5), kmToY(1.2)
       );
       ctx.closePath();
 
-      // Cloud body gradient
       const cloudGrad = ctx.createLinearGradient(0, kmToY(13.0), 0, kmToY(1.0));
-      cloudGrad.addColorStop(0, 'rgba(30, 41, 59, 0.88)');
-      cloudGrad.addColorStop(0.4, 'rgba(15, 23, 42, 0.92)');
-      cloudGrad.addColorStop(1, 'rgba(30, 41, 59, 0.85)');
+      cloudGrad.addColorStop(0, 'rgba(30, 41, 59, 0.85)');
+      cloudGrad.addColorStop(0.5, 'rgba(15, 23, 42, 0.92)');
+      cloudGrad.addColorStop(1, 'rgba(30, 41, 59, 0.88)');
       ctx.fillStyle = cloudGrad;
       ctx.fill();
-      ctx.strokeStyle = 'rgba(71, 85, 105, 0.5)';
+      ctx.strokeStyle = 'rgba(71, 85, 105, 0.45)';
       ctx.lineWidth = 1.5;
       ctx.stroke();
       ctx.restore();
 
-      // 5. Isotherms (Linhas de Temperatura)
+      // 5. DRAW CORRENTE ASCENDENTE (Updraft Column with Golden/Cyan Glow)
+      const xUpBase = engine.wind.getUpdraftX(1.5, engine.params.updraftTiltDeg);
+      const xUpTop = engine.wind.getUpdraftX(11.5, engine.params.updraftTiltDeg);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(kmToX(xUpBase - 1.8), kmToY(1.2));
+      ctx.lineTo(kmToX(xUpTop - 2.2), kmToY(11.5));
+      ctx.lineTo(kmToX(xUpTop + 2.2), kmToY(11.5));
+      ctx.lineTo(kmToX(xUpBase + 1.8), kmToY(1.2));
+      ctx.closePath();
+      const updraftGrad = ctx.createLinearGradient(kmToX(xUpBase), kmToY(1.2), kmToX(xUpTop), kmToY(11.5));
+      updraftGrad.addColorStop(0, 'rgba(234, 179, 8, 0.08)');
+      updraftGrad.addColorStop(0.5, 'rgba(6, 182, 212, 0.12)');
+      updraftGrad.addColorStop(1, 'rgba(56, 189, 248, 0.05)');
+      ctx.fillStyle = updraftGrad;
+      ctx.fill();
+
+      // Updraft animated upward streamlines & arrows
+      if (useSimulationStore.getState().showWindField) {
+        for (let col = -1; col <= 1; col++) {
+          const offsetKm = col * 1.0;
+          ctx.strokeStyle = col === 0 ? 'rgba(234, 179, 8, 0.7)' : 'rgba(56, 189, 248, 0.45)';
+          ctx.lineWidth = col === 0 ? 2.0 : 1.2;
+          ctx.beginPath();
+          ctx.moveTo(kmToX(xUpBase + offsetKm), kmToY(1.5));
+          for (let z = 2.0; z <= 11.5; z += 1.0) {
+            const curX = engine.wind.getUpdraftX(z, engine.params.updraftTiltDeg) + offsetKm;
+            ctx.lineTo(kmToX(curX), kmToY(z));
+          }
+          ctx.stroke();
+
+          // Animated arrows going UP
+          const phase = (animClock * 2.2 + col * 0.3) % 1.0;
+          const arrowZ = 1.5 + phase * 9.5;
+          const arrowX = engine.wind.getUpdraftX(arrowZ, engine.params.updraftTiltDeg) + offsetKm;
+          ctx.fillStyle = '#f59e0b';
+          ctx.beginPath();
+          ctx.arc(kmToX(arrowX), kmToY(arrowZ), 3.0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Updraft Banner Badge
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.95)';
+        ctx.font = 'bold 11px JetBrains Mono, monospace';
+        ctx.fillText('▲ CORRENTE ASCENDENTE (+w: Sobe e Cresce)', kmToX(xUpBase - 1.5), kmToY(4.5));
+      }
+      ctx.restore();
+
+      // 6. DRAW CORRENTE DESCENDENTE (Downdraft Shaft in Blue/Indigo)
+      const xDownBase = engine.wind.getDowndraftX(0.5);
+      const xDownTop = engine.wind.getDowndraftX(9.5);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(kmToX(xDownTop - 2.2), kmToY(9.5));
+      ctx.lineTo(kmToX(xDownBase - 2.0), groundY);
+      ctx.lineTo(kmToX(xDownBase + 2.0), groundY);
+      ctx.lineTo(kmToX(xDownTop + 2.2), kmToY(9.5));
+      ctx.closePath();
+
+      const downGrad = ctx.createLinearGradient(kmToX(xDownTop), kmToY(9.5), kmToX(xDownBase), groundY);
+      downGrad.addColorStop(0, 'rgba(99, 102, 241, 0.12)');
+      downGrad.addColorStop(0.5, 'rgba(59, 130, 246, 0.18)');
+      downGrad.addColorStop(1, 'rgba(30, 64, 175, 0.28)');
+      ctx.fillStyle = downGrad;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(99, 102, 241, 0.45)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Downdraft animated downward streamlines & arrows
+      if (useSimulationStore.getState().showWindField) {
+        for (let col = -1; col <= 1; col++) {
+          const offsetKm = col * 0.9;
+          ctx.strokeStyle = 'rgba(129, 140, 248, 0.7)';
+          ctx.lineWidth = col === 0 ? 2.0 : 1.2;
+          ctx.beginPath();
+          ctx.moveTo(kmToX(xDownTop + offsetKm), kmToY(9.5));
+          for (let z = 9.0; z >= 0.5; z -= 1.0) {
+            const curX = engine.wind.getDowndraftX(z) + offsetKm;
+            ctx.lineTo(kmToX(curX), kmToY(z));
+          }
+          ctx.stroke();
+
+          // Animated arrows going DOWN
+          const phase = (animClock * 2.5 + col * 0.35) % 1.0;
+          const arrowZ = 9.5 - phase * 9.0;
+          const arrowX = engine.wind.getDowndraftX(arrowZ) + offsetKm;
+          ctx.fillStyle = '#818cf8';
+          ctx.beginPath();
+          ctx.arc(kmToX(arrowX), kmToY(arrowZ), 3.0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Downdraft Banner Badge
+        ctx.fillStyle = 'rgba(129, 140, 248, 0.95)';
+        ctx.font = 'bold 11px JetBrains Mono, monospace';
+        ctx.fillText('▼ CORRENTE DESCENDENTE (-w: Granizo ao Solo)', kmToX(xDownBase - 2.8), kmToY(5.2));
+      }
+      ctx.restore();
+
+      // Outside Downdraft Melting Annotation
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.7)';
+      ctx.font = '10px Inter, sans-serif';
+      ctx.fillText('Fora da descendente: granizo derrete e vira chuva', kmToX(1.8), kmToY(1.8));
+
+      // 7. Isotherm Lines (0°C, -20°C, -40°C)
       if (useSimulationStore.getState().showIsotherms) {
         ctx.lineWidth = 1.2;
 
@@ -182,68 +265,23 @@ export const SimulationCanvas: React.FC = () => {
         ctx.moveTo(0, yM20);
         ctx.lineTo(width, yM20);
         ctx.stroke();
-        ctx.fillStyle = 'rgba(148, 163, 184, 0.8)';
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.75)';
         ctx.font = '9px JetBrains Mono, monospace';
         ctx.fillText(`-20°C (${iso.zMinus20C.toFixed(1)} km)`, 8, yM20 - 4);
-
-        // -40°C line (Homogeneous freezing limit)
-        const yM40 = kmToY(iso.zMinus40C);
-        ctx.strokeStyle = 'rgba(96, 165, 250, 0.35)';
-        ctx.beginPath();
-        ctx.moveTo(0, yM40);
-        ctx.lineTo(width, yM40);
-        ctx.stroke();
-        ctx.fillText(`-40°C (${iso.zMinus40C.toFixed(1)} km) - Congelamento Espontâneo`, 8, yM40 - 4);
 
         ctx.setLineDash([]);
       }
 
-      // 6. Wind Field Streamlines
-      if (useSimulationStore.getState().showWindField) {
-        ctx.save();
-        const coreX = xBase + (tiltX * 0.5);
-        for (let col = -2; col <= 2; col++) {
-          const streamX = coreX + col * 1.1;
-          ctx.beginPath();
-          ctx.strokeStyle = 'rgba(56, 189, 248, 0.22)';
-          ctx.lineWidth = 1.2;
-
-          let sx = streamX;
-          let sz = 1.2;
-          ctx.moveTo(kmToX(sx), kmToY(sz));
-
-          for (let step = 0; step < 16; step++) {
-            const { u, w } = engine.wind.evaluate(sx, sz, engine.simTimeSec, engine.params);
-            sx += (u * 0.25) / 10.0;
-            sz += (w * 0.25) / 10.0;
-            if (sz > 13.0 || sx < 1.0 || sx > 21.0) break;
-            ctx.lineTo(kmToX(sx), kmToY(sz));
-          }
-          ctx.stroke();
-
-          // Animated particle moving along stream
-          const offset = ((animClock * 1.5 + col * 0.4) % 1.0);
-          const tracerZ = 1.5 + offset * 10.5;
-          const tracerX = streamX + (tracerZ / 12.0) * tiltX * 0.6;
-          ctx.fillStyle = 'rgba(56, 189, 248, 0.65)';
-          ctx.beginPath();
-          ctx.arc(kmToX(tracerX), kmToY(tracerZ), 2.0, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        ctx.restore();
-      }
-
-      // 7. Trajectories of Active Particles
+      // 8. Trajectories of Active Particles
       if (useSimulationStore.getState().showTrajectories) {
-        ctx.lineWidth = 1.2;
         for (let i = 0; i < engine.particles.activeCount; i++) {
           if (engine.particles.alive[i] === 0) continue;
           const traj = engine.particles.trajectories[i];
           if (!traj || traj.length < 2) continue;
 
           const isSelected = i === selectedParticleId - 1;
-          ctx.strokeStyle = isSelected ? 'rgba(251, 191, 36, 0.85)' : 'rgba(148, 163, 184, 0.18)';
-          ctx.lineWidth = isSelected ? 2.0 : 0.8;
+          ctx.strokeStyle = isSelected ? 'rgba(251, 191, 36, 0.95)' : 'rgba(148, 163, 184, 0.2)';
+          ctx.lineWidth = isSelected ? 2.2 : 0.9;
 
           ctx.beginPath();
           ctx.moveTo(kmToX(traj[0].x), kmToY(traj[0].z));
@@ -254,7 +292,7 @@ export const SimulationCanvas: React.FC = () => {
         }
       }
 
-      // 8. Hydrometeor Particles (Nuvem, SLW, Graupel, Granizo em Camadas)
+      // 9. Hydrometeor Particles
       const count = engine.particles.activeCount;
       for (let i = 0; i < count; i++) {
         if (engine.particles.alive[i] === 0) continue;
@@ -264,48 +302,29 @@ export const SimulationCanvas: React.FC = () => {
         const diam = engine.particles.diameters[i];
         const type = engine.particles.types[i] as ParticleType;
         const regime = engine.particles.regimes[i] as GrowthRegime;
+        const loops = engine.particles.recirculations[i];
         const isSelected = i === selectedParticleId - 1;
 
-        // Base pixel radius with minimum visible size
-        const radius = Math.max(2.5, Math.min(22, (diam / 2.0) * 0.75));
+        const radius = Math.max(3.0, Math.min(24, (diam / 2.0) * 0.85));
 
         ctx.save();
 
-        if (type === ParticleType.DROP || type === ParticleType.RAIN) {
-          // Liquid raindrop
+        if (type === ParticleType.RAIN) {
           ctx.fillStyle = '#38bdf8';
           ctx.beginPath();
-          ctx.arc(px, py, Math.max(2.0, radius * 0.6), 0, Math.PI * 2);
-          ctx.fill();
-        } else if (type === ParticleType.SLW_DROP) {
-          // Supercooled liquid droplet
-          ctx.fillStyle = '#06b6d4';
-          ctx.beginPath();
-          ctx.arc(px, py, 2.5, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.strokeStyle = '#67e8f9';
-          ctx.lineWidth = 0.8;
-          ctx.stroke();
-        } else if (type === ParticleType.ICE_CRYSTAL) {
-          // Ice crystal
-          ctx.fillStyle = '#e2e8f0';
-          ctx.beginPath();
-          ctx.arc(px, py, 2.2, 0, Math.PI * 2);
+          ctx.arc(px, py, Math.max(2.2, radius * 0.65), 0, Math.PI * 2);
           ctx.fill();
         } else if (type === ParticleType.GRAUPEL) {
-          // Porous rime embryo (snow pellet)
           ctx.fillStyle = '#f8fafc';
           ctx.beginPath();
-          ctx.arc(px, py, Math.max(3.0, radius), 0, Math.PI * 2);
+          ctx.arc(px, py, radius, 0, Math.PI * 2);
           ctx.fill();
           ctx.strokeStyle = '#94a3b8';
           ctx.lineWidth = 1.0;
           ctx.stroke();
         } else {
-          // Layered Hailstone (> 5 mm)
-          // Outer core depending on growth regime:
+          // Hailstone
           if (regime === GrowthRegime.DRY) {
-            // Rime growth: Opaque milky white with trapped air bubbles
             ctx.fillStyle = '#f1f5f9';
             ctx.beginPath();
             ctx.arc(px, py, radius, 0, Math.PI * 2);
@@ -314,7 +333,6 @@ export const SimulationCanvas: React.FC = () => {
             ctx.lineWidth = 1.5;
             ctx.stroke();
           } else if (regime === GrowthRegime.WET) {
-            // Glaze growth: Translucent glassy ice with specular shine
             const glazeGrad = ctx.createRadialGradient(px - radius * 0.3, py - radius * 0.3, radius * 0.1, px, py, radius);
             glazeGrad.addColorStop(0, '#ffffff');
             glazeGrad.addColorStop(0.5, '#7dd3fc');
@@ -327,18 +345,16 @@ export const SimulationCanvas: React.FC = () => {
             ctx.lineWidth = 1.5;
             ctx.stroke();
           } else {
-            // Melting regime below freezing level: liquid water film sheath
             ctx.fillStyle = '#bae6fd';
             ctx.beginPath();
             ctx.arc(px, py, radius, 0, Math.PI * 2);
             ctx.fill();
             ctx.strokeStyle = '#0284c7';
-            ctx.lineWidth = 2.0;
+            ctx.lineWidth = 1.8;
             ctx.stroke();
           }
 
-          // Visible Onion-Skin Layer Ring for larger stones
-          if (radius > 6) {
+          if (loops > 0 && radius > 5) {
             ctx.strokeStyle = regime === GrowthRegime.DRY ? '#94a3b8' : '#ffffff';
             ctx.lineWidth = 1.0;
             ctx.beginPath();
@@ -347,7 +363,6 @@ export const SimulationCanvas: React.FC = () => {
           }
         }
 
-        // Selected particle target highlight ring
         if (isSelected) {
           ctx.strokeStyle = '#f59e0b';
           ctx.lineWidth = 2.0;
@@ -357,14 +372,14 @@ export const SimulationCanvas: React.FC = () => {
 
           ctx.fillStyle = '#f59e0b';
           ctx.font = 'bold 10px JetBrains Mono, monospace';
-          ctx.fillText(`P${i + 1} (${diam.toFixed(1)}mm)`, px + radius + 7, py + 3);
+          ctx.fillText(`P${i + 1} (${diam.toFixed(1)}mm • ${loops} voltas)`, px + radius + 7, py + 3);
         }
 
         ctx.restore();
       }
 
-      // 9. Ground Surface Line & Depth
-      ctx.fillStyle = '#0f172a';
+      // 10. Ground Surface Line & Labels
+      ctx.fillStyle = '#090d16';
       ctx.fillRect(0, groundY, width, height - groundY);
       ctx.strokeStyle = '#334155';
       ctx.lineWidth = 2.0;
@@ -373,11 +388,15 @@ export const SimulationCanvas: React.FC = () => {
       ctx.lineTo(width, groundY);
       ctx.stroke();
 
-      // Ground Labels
-      ctx.fillStyle = '#64748b';
+      ctx.fillStyle = '#94a3b8';
       ctx.font = '10px JetBrains Mono, monospace';
-      ctx.fillText('0 km (Superfície)', 10, groundY + 16);
-      ctx.fillText(`Granizo no Solo: ${engine.groundStats.totalGrounded}`, width - 180, groundY + 16);
+      ctx.fillText('0 km (Solo)', 10, groundY + 16);
+
+      ctx.fillStyle = '#818cf8';
+      ctx.fillText('Impacto de Granizo Intacto (Downdraft)', kmToX(xDownBase - 2.5), groundY + 16);
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText('Chuva (Derretido fora do downdraft)', kmToX(1.8), groundY + 16);
 
       animFrameId = requestAnimationFrame(render);
     };
@@ -389,7 +408,6 @@ export const SimulationCanvas: React.FC = () => {
     };
   }, [params, selectedParticleId, selectParticle, updateTelemetry, updateGroundStats]);
 
-  // Handle click on canvas to select stone
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -399,7 +417,7 @@ export const SimulationCanvas: React.FC = () => {
 
     const width = canvas.width;
     const height = canvas.height;
-    const groundY = height - 42;
+    const groundY = height - 44;
     const topY = 28;
 
     const clickXKm = (clickX / width) * 22.0;
@@ -409,7 +427,7 @@ export const SimulationCanvas: React.FC = () => {
     if (!engine) return;
 
     let closestId = 1;
-    let minDistanceSq = 6.0; // km threshold
+    let minDistanceSq = 8.0;
 
     for (let i = 0; i < engine.particles.activeCount; i++) {
       if (engine.particles.alive[i] === 0) continue;
@@ -434,11 +452,11 @@ export const SimulationCanvas: React.FC = () => {
         className="w-full h-auto block cursor-crosshair"
       />
       <div className="absolute top-2 left-3 pointer-events-none flex items-center gap-2">
-        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-900/80 text-cyan-400 border border-slate-700/60 backdrop-blur-sm">
-          Corte Vertical 2D: 0 a 14 km
+        <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-900/90 text-cyan-400 border border-slate-700/60 backdrop-blur-sm">
+          Corte Vertical 2D • Dupla Corrente (Ascendente + Descendente)
         </span>
         <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">
-          Clique em qualquer pedra para rastreá-la
+          Clique em qualquer pedra para rastrear seus ciclos
         </span>
       </div>
     </div>

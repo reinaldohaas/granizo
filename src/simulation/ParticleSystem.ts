@@ -6,7 +6,6 @@ export class ParticleSystem {
   public readonly capacity: number;
   public activeCount: number;
 
-  // High-performance flat typed arrays as required
   public positionsX: Float32Array;
   public positionsZ: Float32Array;
   public velocitiesX: Float32Array;
@@ -22,7 +21,8 @@ export class ParticleSystem {
   public meltedFractions: Float32Array;
   public alive: Uint8Array;
 
-  // Trajectory history buffer: array of coordinates for each particle
+  public prevVz: Float32Array;
+
   public trajectories: Array<Array<{ x: number; z: number; d: number }>>;
   public layerHistories: Array<LayerRecord[]>;
 
@@ -44,6 +44,7 @@ export class ParticleSystem {
     this.frozenFractions = new Float32Array(capacity);
     this.meltedFractions = new Float32Array(capacity);
     this.alive = new Uint8Array(capacity);
+    this.prevVz = new Float32Array(capacity);
 
     this.trajectories = [];
     this.layerHistories = [];
@@ -67,56 +68,41 @@ export class ParticleSystem {
     currentStage: number,
     isInitial: boolean = false
   ): void {
-    const xBase = 10.0;
-    // Initial random distribution inside convective cloud column
-    this.positionsX[index] = xBase + globalRNG.gaussian(0, 2.0);
-    this.positionsZ[index] = isInitial ? globalRNG.range(1.5, 9.5) : globalRNG.range(1.5, 3.5);
-
-    this.velocitiesX[index] = globalRNG.gaussian(0, 0.5);
-    this.velocitiesZ[index] = globalRNG.range(0.5, 3.0);
-
-    const z = this.positionsZ[index];
-
-    // Determine initial type based on altitude and stage
-    let type = ParticleType.DROP;
-    let diamMm = globalRNG.range(1.0, 2.5);
-
-    if (currentStage === 1) {
-      if (z < zFreezingKm) type = ParticleType.DROP;
-      else if (z < 7.0) type = ParticleType.SLW_DROP;
-      else type = ParticleType.ICE_CRYSTAL;
-    } else if (currentStage === 2) {
-      if (z < zFreezingKm) type = ParticleType.DROP;
-      else if (z < 9.0) type = ParticleType.SLW_DROP;
-      else type = ParticleType.ICE_CRYSTAL;
+    const xBase = 8.5;
+    if (isInitial) {
+      this.positionsX[index] = xBase + globalRNG.range(-1.5, 4.0);
+      this.positionsZ[index] = globalRNG.range(2.0, 9.5);
     } else {
-      // Stages 3 and 4: graupel embryos
-      if (z > zFreezingKm && z < 8.0 && globalRNG.next() < 0.45) {
-        type = ParticleType.GRAUPEL;
-        diamMm = globalRNG.range(2.5, 4.5);
-      } else if (z >= zFreezingKm) {
-        type = ParticleType.SLW_DROP;
-      }
+      this.positionsX[index] = xBase + globalRNG.range(-1.2, 1.5);
+      this.positionsZ[index] = globalRNG.range(1.8, 3.8);
     }
+
+    this.velocitiesX[index] = globalRNG.range(0.5, 3.0);
+    this.velocitiesZ[index] = globalRNG.range(2.0, 8.0);
+    this.prevVz[index] = this.velocitiesZ[index];
+
+    // Every hailstone begins as a small embryo: graupel (2.0 to 4.0 mm)
+    const type = ParticleType.GRAUPEL;
+    const diamMm = globalRNG.range(2.0, 3.8);
 
     this.types[index] = type;
     this.diameters[index] = diamMm;
     const density = HailstonePhysics.getDensity(diamMm, false);
     this.masses[index] = HailstonePhysics.massFromDiameter(diamMm, density);
-    this.regimes[index] = GrowthRegime.NONE;
+    this.regimes[index] = GrowthRegime.DRY;
     this.layers[index] = 1;
     this.recirculations[index] = 0;
     this.waterCollected[index] = 0;
-    this.frozenFractions[index] = type === ParticleType.DROP || type === ParticleType.SLW_DROP ? 0 : 1;
-    this.meltedFractions[index] = 0;
+    this.frozenFractions[index] = 1.0;
+    this.meltedFractions[index] = 0.0;
     this.alive[index] = 1;
 
     this.trajectories[index] = [{ x: this.positionsX[index], z: this.positionsZ[index], d: diamMm }];
     this.layerHistories[index] = [{
       thicknessMm: diamMm,
       regime: GrowthRegime.DRY,
-      temperatureC: -10,
-      altitudeKm: z,
+      temperatureC: -12,
+      altitudeKm: this.positionsZ[index],
       timestamp: 0
     }];
   }
