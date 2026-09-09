@@ -141,10 +141,16 @@
             </span>
           </div>
 
-          <!-- Bottom Hail Swath Counter Indicator -->
-          <div class="absolute bottom-5 left-5 bg-slate-900/80 backdrop-blur border border-slate-700/60 rounded-lg px-3 py-1.5 text-xs text-slate-300 pointer-events-none flex items-center gap-2">
-            <span>❄️ Pedras no Cordão de Granizo (Solo):</span>
-            <span id="swath-count-val" class="font-mono font-bold text-white text-sm">0</span>
+          <!-- Bottom Live Counters: Swath vs Melted -->
+          <div class="absolute bottom-4 left-4 right-4 flex flex-wrap items-center justify-between gap-2 pointer-events-none z-20">
+            <div class="bg-slate-900/95 backdrop-blur border border-slate-700/80 rounded-lg px-3 py-1.5 text-xs text-slate-200 flex items-center gap-2 shadow-lg">
+              <span>❄️ Granizos Maiores no Solo (Cordão):</span>
+              <span id="swath-count-val" class="font-mono font-bold text-white text-sm bg-slate-800 px-2 py-0.5 rounded border border-slate-700">0</span>
+            </div>
+            <div class="bg-slate-900/95 backdrop-blur border border-cyan-700/80 rounded-lg px-3 py-1.5 text-xs text-cyan-300 flex items-center gap-2 shadow-lg">
+              <span>🌧️ Granizos Menores Derretidos (Viraram Chuva):</span>
+              <span id="melted-count-val" class="font-mono font-bold text-cyan-200 text-sm bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-800">0</span>
+            </div>
           </div>
         </div>
 
@@ -177,16 +183,16 @@
               <div class="flex items-start gap-2.5">
                 <span class="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">3</span>
                 <div>
-                  <span class="font-semibold text-amber-300 block">Recirculação: Subindo e Descendo</span>
-                  <p class="text-slate-400 text-[11px]">O updraft suspende a pedra; na borda, ela desce e é recapturada, acumulando camadas concêntricas (anéis de crescimento).</p>
+                  <span class="font-semibold text-amber-300 block">Núcleo Concentrado e Captura ao Acaso</span>
+                  <p class="text-slate-400 text-[11px]">O updraft não é difuso: forma um jato concentrado e ultra-veloz (35 a 45 m/s). Embriões que circulam pela nuvem são <strong>sugados ao acaso</strong> pelo funil e ejetados para cima, ganhando uma <strong>nova camada concêntrica (efeito casca de cebola)</strong> a cada subida.</p>
                 </div>
               </div>
 
               <div class="flex items-start gap-2.5">
                 <span class="w-5 h-5 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center font-bold text-[10px] shrink-0 mt-0.5">4</span>
                 <div>
-                  <span class="font-semibold text-red-300 block">Queda e "Cordão de Granizo"</span>
-                  <p class="text-slate-400 text-[11px]">O peso vence a sustentação ($P > F_{\text{sust}}$). O granizo atinge o solo a mais de 120 km/h, formando uma faixa branca contínua (*hail swath*).</p>
+                  <span class="font-semibold text-red-300 block">Derretimento Seletivo e Cordão de Granizo</span>
+                  <p class="text-slate-400 text-[11px]">Abaixo dos 4.000 m (0°C), <strong>pedras menores derretem totalmente no caminho</strong> e viram chuva líquida. Somente as <strong>pedras maiores (3 a 5 camadas)</strong> sobrevivem à travessia quente em alta velocidade, atingindo o solo e acumulando o <strong>cordão de granizo</strong> (*hail swath*).</p>
                 </div>
               </div>
             </div>
@@ -388,17 +394,19 @@
       activeBtn.classList.add('bg-cyan-600', 'text-white', 'shadow');
     }
 
-    const canvas = document.getElementById('main-cloud-canvas');
+        const canvas = document.getElementById('main-cloud-canvas');
     const ctx = canvas.getContext('2d');
 
     let isRunning = true;
     let currentIntervention = 'natural'; // 'natural', 'som', 'queimador', 'foguete', 'aviao', 'drone', 'telas'
     let swathCount = 0;
+    let meltedCount = 0;
 
     // Simulation entities
     let hailstones = [];
     let swathStones = []; // stones accumulated on ground
     let supercooledDrops = [];
+    let rainDrops = []; // rain particles created when small hail melts
     let smokeParticles = [];
     let soundWaves = [];
     let rocket = null;
@@ -406,173 +414,301 @@
     let drone = null;
     let netActive = false;
 
-    // Initialize supercooled drops in growth zone (-10°C to -25°C: y ~160 to ~290)
+    // Initialize supercooled drops in growth zone (-10°C to -25°C: y ~160 to ~310)
     for (let i = 0; i < 90; i++) {
       supercooledDrops.push({
-        x: 180 + Math.random() * 420,
-        y: 150 + Math.random() * 140,
+        x: 180 + Math.random() * 440,
+        y: 150 + Math.random() * 150,
         r: 1.5 + Math.random() * 2,
-        baseX: 0,
         floatSpeed: 0.3 + Math.random() * 0.5
       });
     }
 
+    const CORE_X = 380;
+    const CORE_W = 60;
+
     class Hailstone {
-      constructor() {
-        this.reset();
+      constructor(initialState = null) {
+        this.reset(initialState);
       }
 
-      reset() {
-        this.x = 300 + Math.random() * 70;
-        this.y = 290;
-        this.radius = 3.5; // starts as graupel
-        this.vy = -1.8;
-        this.vx = (Math.random() - 0.5) * 0.8;
-        this.cycle = 1;
-        this.maxCycles = 2 + Math.floor(Math.random() * 3); // 2 to 4 cycles!
-        this.state = 'updraft'; // 'updraft', 'down_flank', 'terminal_fall', 'net_bounce', 'ground'
+      reset(initialState) {
+        // Starts as graupel embryo in cloud
+        this.x = 200 + Math.random() * 380;
+        this.y = 170 + Math.random() * 150;
         this.layers = 1;
+        this.radius = 3.2; // graupel radius
+        this.vx = (Math.random() - 0.5) * 0.8;
+        this.vy = 0.4 + Math.random() * 0.6; // gentle sinking drift
+        this.state = initialState || 'drift'; // 'drift', 'sucked_in', 'core_ascent', 'top_eject', 'flank_descent', 'terminal_fall', 'net_bounce', 'ground', 'melted'
+        this.maxLayers = 2 + Math.floor(Math.random() * 4); // 2 to 5 layers before terminal fall
         this.melted = false;
-        this.opacity = 1;
+        this.meltSprayTimer = 0;
+        this.id = Math.floor(Math.random() * 10000);
       }
 
       update() {
         if (this.state === 'ground') return;
 
-        // Effect of cloud seeding interventions (Queimador, Foguete, Aviao, Drone)
+        // Artificial cloud seeding interventions: causes massive crystal competition
         if (['queimador', 'foguete', 'aviao', 'drone'].includes(currentIntervention)) {
-          // If seeding active, artificial nuclei compete, stone stays tiny and melts into rain!
-          if (this.y > 330) {
-            this.melted = true;
-            this.radius -= 0.12;
+          if (this.y > 320) {
+            // Rapid forced melting below freezing level due to tiny competing sizes
+            this.radius -= 0.15;
             if (this.radius <= 0.8) {
-              this.state = 'ground'; // dissolved into rain
+              this.state = 'ground';
+              meltedCount++;
+              document.getElementById('melted-count-val').innerText = meltedCount;
+              setTimeout(() => this.reset('drift'), 800 + Math.random() * 1200);
               return;
             }
           }
         }
 
-        if (this.state === 'updraft') {
-          // Ascending in the violent updraft
-          this.y += this.vy;
+        // 1. DRIFTING IN TURBULENT CLOUD
+        if (this.state === 'drift') {
           this.x += this.vx;
+          this.y += this.vy;
+          this.vx += (Math.random() - 0.5) * 0.2;
+          this.vx = Math.max(-1.1, Math.min(1.1, this.vx));
 
-          // Accretion of supercooled drops: growing in diameter & concentric layers
-          this.radius += 0.035;
-          if (Math.random() < 0.05) this.layers++;
+          // Boundary bounce inside cloud
+          if (this.x < 170) this.vx = Math.abs(this.vx);
+          if (this.x > 620) this.vx = -Math.abs(this.vx);
+          if (this.y > 355) { this.y = 355; this.vy = -0.2; }
 
-          // Updraft pushes up to ~140 (top of growth zone)
-          if (this.y < 145) {
-            // Diverges horizontally into flank downdraft
-            this.state = 'down_flank';
-            this.vx = 1.2 + Math.random() * 0.8; // pushed to the right
-            this.vy = 0.5;
+          // STOCHASTIC CAPTURE: If enters suction zone near the base of the concentrated core:
+          const distFromCore = Math.abs(this.x - CORE_X);
+          if (distFromCore < 75 && this.y >= 280 && this.y <= 360) {
+            // Random choice! Stochastic probability of being sucked in
+            if (Math.random() < 0.08) {
+              this.state = 'sucked_in';
+            }
           }
-        } 
-        else if (this.state === 'down_flank') {
-          // Descending down the flank of the cloud
-          this.y += this.vy;
-          this.x += this.vx;
-          this.vy += 0.04;
-
-          // If still has cycles left, sucked back into updraft channel!
-          if (this.cycle < this.maxCycles && this.y > 270 && this.y < 330) {
-            this.cycle++;
-            this.state = 'updraft';
-            this.vx = -1.4; // pulled back into updraft column
-            this.vy = -2.2;
-            this.layers++;
-          } 
-          else if (this.y > 330) {
-            // Exceeded updraft capacity: goes into terminal fall!
+          if (this.y >= 350 && Math.random() < 0.015) {
             this.state = 'terminal_fall';
-            this.vy = Math.sqrt(this.radius * 2.8); // terminal velocity proportional to sqrt(r)
-            this.vx = (Math.random() - 0.5) * 0.4;
           }
-        } 
+        }
+
+        // 2. SUCKED INTO CONCENTRATED CORE FUNNEL
+        else if (this.state === 'sucked_in') {
+          let dx = CORE_X - this.x;
+          this.x += dx * 0.22;
+          this.y += (345 - this.y) * 0.15;
+
+          if (Math.abs(dx) < 6) {
+            this.x = CORE_X + (Math.random() - 0.5) * 8;
+            this.state = 'core_ascent';
+            this.vy = -6.2 - Math.random() * 1.8; // VIOLENT HIGH-VELOCITY JET!
+            this.layers++;
+            this.radius += 1.4; // FORGES A NEW CONCENTRIC LAYER!
+          }
+        }
+
+        // 3. CORE ASCENT (Disparo violento para cima)
+        else if (this.state === 'core_ascent') {
+          this.y += this.vy;
+          this.x += (Math.random() - 0.5) * 0.6;
+          this.x = Math.max(CORE_X - CORE_W/2 + 5, Math.min(CORE_X + CORE_W/2 - 5, this.x));
+
+          // Ejected at the anvil top divergence zone (~135)
+          if (this.y < 135) {
+            this.state = 'top_eject';
+            const toRight = Math.random() > 0.45;
+            this.vx = toRight ? (2.4 + Math.random() * 1.4) : (-2.4 - Math.random() * 1.4);
+            this.vy = 0.2;
+          }
+        }
+
+        // 4. TOP DIVERGENCE EJECTION
+        else if (this.state === 'top_eject') {
+          this.x += this.vx;
+          this.y += this.vy;
+          this.vy += 0.09;
+
+          if (this.x < CORE_X - CORE_W/2 - 20 || this.x > CORE_X + CORE_W/2 + 20) {
+            this.state = 'flank_descent';
+            this.vy = 1.1 + Math.random() * 0.8;
+          }
+        }
+
+        // 5. FLANK DESCENT (Descida na periferia, pode ser recapturada ao acaso)
+        else if (this.state === 'flank_descent') {
+          this.x += this.vx;
+          this.y += this.vy;
+          this.vx *= 0.98;
+
+          // Inflow pulls air toward center at mid-to-lower cloud
+          if (this.y > 270) {
+            let pull = this.x < CORE_X ? 1 : -1;
+            this.x += pull * 0.85;
+          }
+
+          // STOCHASTIC RE-CAPTURE:
+          if (this.y >= 290 && this.y <= 360) {
+            const distFromCore = Math.abs(this.x - CORE_X);
+            if (this.layers < this.maxLayers && distFromCore < 80) {
+              if (Math.random() < 0.09) {
+                // Sucked in again for another concentric growth ring!
+                this.state = 'sucked_in';
+                return;
+              }
+            }
+          }
+
+          // If too heavy (reaches maxLayers) or escapes suction:
+          if (this.y > 350) {
+            this.state = 'terminal_fall';
+            this.vy = Math.sqrt(this.radius * 3.6) + 3.0; // Terminal velocity
+            this.vx = (Math.random() - 0.5) * 0.6;
+          }
+        }
+
+        // 6. TERMINAL FALL (CRITICAL: SELECTIVE MELTING BELOW 0°C)
         else if (this.state === 'terminal_fall') {
-          // Falling through warm layer to ground
           this.y += this.vy;
           this.x += this.vx;
 
-          // Check interaction with PEAD Anti-hail Net
-          if (currentIntervention === 'telas' && this.y >= 495 && this.y <= 510 && this.x >= 280 && this.x <= 680) {
-            this.state = 'net_bounce';
-            this.vy = -1.5; // bounce!
-            this.vx = (Math.random() > 0.5 ? 1 : -1) * 2; // rolls to side trench
-            return;
-          }
-
-          // Hit ground
-          if (this.y >= 528) {
-            this.y = 528;
-            this.state = 'ground';
-            if (!this.melted) {
-              swathCount++;
-              document.getElementById('swath-count-val').innerText = swathCount;
-              // Add to persistent hail swath pile
-              if (swathStones.length < 350) {
-                swathStones.push({
+          // Below Freezing Level (y > 320: T > 0°C Warm Layer)
+          if (this.y > 320) {
+            // === CASE A: SMALL HAIL (1 or 2 layers, r <= 5mm) ===
+            // Melting completely into rain on the way down!
+            if (this.layers <= 2 || this.radius <= 4.8) {
+              this.radius -= 0.085; // shrinks rapidly in warm air
+              
+              // Spawn rain droplets from melting hail
+              if (Math.random() < 0.4) {
+                rainDrops.push({
                   x: this.x + (Math.random() - 0.5) * 6,
-                  y: 530 - Math.min(swathStones.length * 0.06, 12),
-                  r: Math.max(this.radius * 0.7, 2)
+                  y: this.y,
+                  vy: this.vy * 0.9,
+                  alpha: 0.8
+                });
+              }
+
+              // Fully melted before reaching ground!
+              if (this.radius <= 1.0) {
+                meltedCount++;
+                document.getElementById('melted-count-val').innerText = meltedCount;
+                this.state = 'ground'; // dissolved into rain
+                setTimeout(() => this.reset('drift'), 700 + Math.random() * 1500);
+                return;
+              }
+            }
+            // === CASE B: GIANT HAIL (3 to 5 layers, r >= 6mm) ===
+            // Massive thermal inertia and high terminal velocity: survives to surface!
+            else {
+              // Only superficial ablation (thin skin melts and sheds water drops)
+              this.radius -= 0.015;
+              if (Math.random() < 0.3) {
+                rainDrops.push({
+                  x: this.x + (Math.random() - 0.5) * 4,
+                  y: this.y,
+                  vy: this.vy * 0.85,
+                  alpha: 0.6
                 });
               }
             }
-            setTimeout(() => this.reset(), 800 + Math.random() * 1200);
+          }
+
+          // Check PEAD Anti-hail Net
+          if (currentIntervention === 'telas' && this.y >= 495 && this.y <= 510 && this.x >= 280 && this.x <= 680) {
+            this.state = 'net_bounce';
+            this.vy = -1.8;
+            this.vx = (Math.random() > 0.5 ? 1 : -1) * 2.2;
+            return;
+          }
+
+          // Ground Impact (y = 528) - Only surviving large hail reaches surface!
+          if (this.y >= 528) {
+            this.y = 528;
+            this.state = 'ground';
+            swathCount++;
+            document.getElementById('swath-count-val').innerText = swathCount;
+
+            // Form persistent Hail Swath on ground
+            if (swathStones.length < 400) {
+              swathStones.push({
+                x: this.x + (Math.random() - 0.5) * 8,
+                y: 530 - Math.min(swathStones.length * 0.05, 14),
+                r: Math.max(this.radius * 0.65, 2.4),
+                layers: this.layers
+              });
+            }
+            setTimeout(() => this.reset('drift'), 800 + Math.random() * 1800);
           }
         }
+
+        // 7. NET BOUNCE
         else if (this.state === 'net_bounce') {
-          // Bouncing on the net and rolling into orchard interlines
           this.y += this.vy;
           this.x += this.vx;
-          this.vy += 0.2;
+          this.vy += 0.25;
           if (this.y >= 530) {
             this.state = 'ground';
-            setTimeout(() => this.reset(), 1000);
+            setTimeout(() => this.reset('drift'), 1200);
           }
         }
       }
 
       draw() {
-        if (this.state === 'ground' && this.melted) return;
+        if (this.state === 'ground') return;
         ctx.save();
         ctx.translate(this.x, this.y);
 
-        if (this.melted) {
-          // Rain drop appearance
+        // Subtle glow when in violent core
+        if (this.state === 'core_ascent') {
           ctx.beginPath();
-          ctx.ellipse(0, 0, 2, 4, 0, 0, Math.PI * 2);
-          ctx.fillStyle = 'rgba(56, 189, 248, 0.8)';
+          ctx.arc(0, 0, this.radius + 3, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
           ctx.fill();
-        } else {
-          // Hailstone with concentric rings
-          ctx.beginPath();
-          ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-          ctx.fillStyle = '#f8fafc';
-          ctx.fill();
-          ctx.strokeStyle = '#94a3b8';
-          ctx.lineWidth = 1;
-          ctx.stroke();
+        }
 
-          // Concentric growth rings
-          for (let l = 1; l < this.layers; l++) {
-            ctx.beginPath();
-            ctx.arc(0, 0, (this.radius / this.layers) * l, 0, Math.PI * 2);
-            ctx.strokeStyle = l % 2 === 0 ? 'rgba(148, 163, 184, 0.7)' : 'rgba(255, 255, 255, 0.9)';
+        // Hailstone body
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = '#f8fafc';
+        ctx.fill();
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Concentric Growth Rings (Onion-skin structure)
+        for (let l = 1; l <= this.layers; l++) {
+          let ringR = (this.radius / this.layers) * l;
+          ctx.beginPath();
+          ctx.arc(0, 0, ringR, 0, Math.PI * 2);
+          if (l === 1) {
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fill();
+          } else if (l % 2 === 0) {
+            ctx.strokeStyle = 'rgba(56, 189, 248, 0.8)';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+          } else {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+            ctx.lineWidth = 1.4;
             ctx.stroke();
           }
+        }
+
+        // Floating layer badge for multi-layered stones (>= 2 layers)
+        if (this.layers >= 2) {
+          ctx.font = 'bold 9px Inter, sans-serif';
+          ctx.fillStyle = this.layers >= 4 ? '#ef4444' : (this.layers === 3 ? '#f59e0b' : '#38bdf8');
+          ctx.fillText(`L${this.layers}`, this.radius + 3, 3);
         }
 
         ctx.restore();
       }
     }
 
-    // Initialize 6 active hailstones in different stages
-    for (let i = 0; i < 6; i++) {
+    // Initialize 16 hailstones in different stages
+    for (let i = 0; i < 16; i++) {
       let h = new Hailstone();
-      h.y = 170 + i * 35;
-      h.cycle = (i % 3) + 1;
+      h.y = 160 + (i % 6) * 32;
+      h.layers = (i % 3) + 1;
+      h.radius = 3.2 + (h.layers - 1) * 1.4;
       hailstones.push(h);
     }
 
@@ -580,7 +716,6 @@
     function setIntervention(mode) {
       currentIntervention = mode;
       
-      // Update buttons
       document.querySelectorAll('.mode-btn').forEach(btn => {
         btn.classList.remove('border-cyan-500', 'bg-cyan-950/40', 'text-cyan-300', 'border-red-500', 'bg-red-950/40', 'border-emerald-500', 'bg-emerald-950/40');
         btn.classList.add('bg-slate-950', 'border-slate-800', 'text-slate-400');
@@ -597,9 +732,8 @@
       const resText = document.getElementById('action-result-text');
       const resEff = document.getElementById('action-result-eff');
 
-      // Clear dynamic animations
-      smokeParticles = [];
       soundWaves = [];
+      smokeParticles = [];
       rocket = null;
       aircraft = null;
       drone = null;
@@ -607,77 +741,77 @@
       if (mode === 'natural') {
         active.classList.add('border-cyan-500', 'bg-cyan-950/40', 'text-cyan-300');
         bannerIcon.innerText = '🌪️';
-        bannerTitle.innerText = 'Ciclo Natural da Tempestade Convectiva';
-        bannerDesc.innerText = 'Gotas super-resfriadas viram graupel, recirculam no updraft e precipitam formando o cordão de granizo.';
+        bannerTitle.innerText = 'Ciclo Convectivo Natural: Núcleo Concentrado e Derretimento Seletivo';
+        bannerDesc.innerText = 'Pedras menores derretem no caminho virando chuva; apenas granizos gigantes com múltiplas camadas chegam ao solo!';
         bannerBadge.innerText = 'Modo Natural';
         bannerBadge.className = 'px-2 py-0.5 rounded text-[10px] font-extrabold bg-cyan-950 border border-cyan-800 text-cyan-300';
-        
+
         resTitle.innerText = 'Nenhum Sistema Acionado (Ciclo Livre)';
-        resText.innerText = 'Sem intervenção, a tempestade acumula camadas de gelo translúcido e opaco a cada volta convectiva, descarregando pedras gigantescas no solo.';
+        resText.innerText = 'O jato ascendente concentrado (38 m/s) suga embriões ao acaso. As pedras que recirculam ganham até 5 camadas. Abaixo de 0°C, as menores derretem em chuva, mas as gigantes atingem o solo.';
         resEff.innerText = '0% de Interrupção';
         resEff.className = 'font-mono font-bold text-slate-300';
       }
       else if (mode === 'som') {
         active.classList.add('border-red-500', 'bg-red-950/40', 'text-red-300');
         bannerIcon.innerText = '📢';
-        bannerTitle.innerText = 'Canhão Sônico Disparando no Solo';
-        bannerDesc.innerText = 'A onda acústica se dissipa em calor a 1.000m e NEM CHEGA À NUVEM! O granizo cai intacto formando o cordão.';
-        bannerBadge.innerText = 'Eficácia: 0%';
-        bannerBadge.className = 'px-2 py-0.5 rounded text-[10px] font-extrabold bg-red-950 border border-red-800 text-red-400';
+        bannerTitle.innerText = 'Canhão Sônico / Acústico (Mito Centenário Desmentido)';
+        bannerDesc.innerText = 'O canhão dispara ondas de choque a cada 5s, mas a pressão decai para 1,3 hPa e se dissipa abaixo de 1.000 m. Nem alcança a nuvem!';
+        bannerBadge.innerText = 'Eficácia: 0% (Ineficaz)';
+        bannerBadge.className = 'px-2 py-0.5 rounded text-[10px] font-extrabold bg-red-950 border border-red-800 text-red-300';
 
-        resTitle.innerText = 'Onda de Choque não Alcança a Nuvem!';
-        resText.innerText = 'A sobrepressão medida a 100m é de apenas 1,3 hPa (precisaria de 300 hPa). Acima de 1.500m é ruído insignificante. Rejeitado pela OMM.';
-        resEff.innerText = '0% (Inútil perante a física)';
+        resTitle.innerText = 'Atenuação Geométrica Total da Onda';
+        resText.innerText = 'A 6.000m de altitude (zona de congelamento), a sobrepressão é zero. O núcleo ascendente concentrado e a formação de granizo continuam 100% inalterados.';
+        resEff.innerText = '0% (Comprovado pela OMM / WMO)';
         resEff.className = 'font-mono font-bold text-red-400';
       }
       else if (mode === 'queimador') {
-        active.classList.add('border-amber-500', 'bg-amber-950/40', 'text-amber-300');
+        active.classList.add('border-cyan-500', 'bg-cyan-950/40', 'text-cyan-300');
         bannerIcon.innerText = '🔥';
-        bannerTitle.innerText = 'Queimador Terrestre de Iodeto de Prata (Fraiburgo)';
-        bannerDesc.innerText = 'Pluma de fumaça sobe pela térmica, entra na base da nuvem e nucleia bilhões de microgotas que derretem na queda.';
-        bannerBadge.innerText = 'Eficácia: 15% a 30%';
-        bannerBadge.className = 'px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-950 border border-amber-800 text-amber-400';
+        bannerTitle.innerText = 'Queimadores de Solo com Iodeto de Prata (AgI)';
+        bannerDesc.innerText = 'Geradores aquecem acetona com AgI no solo; a fumaça sobe pela camada limite atmosférica até a base da tempestade.';
+        bannerBadge.innerText = 'Eficácia: 20% a 35%';
+        bannerBadge.className = 'px-2 py-0.5 rounded text-[10px] font-extrabold bg-cyan-950 border border-cyan-800 text-cyan-300';
 
-        resTitle.innerText = 'Competição Benéfica por Nucleação Artificial';
-        resText.innerText = 'A fumaça microscópica de AgI sobe e divide a umidade disponível. As pedras diminuem de tamanho e derretem virando chuva líquida.';
-        resEff.innerText = '15% a 30% (Depende do vento)';
-        resEff.className = 'font-mono font-bold text-amber-400';
+        resTitle.innerText = 'Competição Glaciogênica por Dispersão Térmica';
+        resText.innerText = 'Os núcleos de AgI competem pela água líquida. Como nenhuma pedra consegue monopolizar o vapor, o granizo fica pequeno e derrete totalmente antes do solo.';
+        resEff.innerText = '20% a 35% (Depende do Vento)';
+        resEff.className = 'font-mono font-bold text-cyan-400';
       }
       else if (mode === 'foguete') {
-        active.classList.add('border-amber-500', 'bg-amber-950/40', 'text-amber-300');
+        active.classList.add('border-cyan-500', 'bg-cyan-950/40', 'text-cyan-300');
         bannerIcon.innerText = '🚀';
-        bannerTitle.innerText = 'Foguete Balístico Antigranizo (Sérvia / Bálcãs)';
-        bannerDesc.innerText = 'Foguete sobe velozmente, corta a nuvem e explode a 6.000m liberando AgI. Estilhaços caem no solo.';
-        bannerBadge.innerText = 'Eficácia: 20% a 40%';
-        bannerBadge.className = 'px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-950 border border-amber-800 text-amber-400';
+        bannerTitle.innerText = 'Foguetes Antigranizo com AgI (Injeção Direta no Núcleo)';
+        bannerDesc.innerText = 'Foguete sobe a Mach 1.5 e explode a 5.000 m diretamente na zona de -10°C, liberando 400g de AgI.';
+        bannerBadge.innerText = 'Eficácia: 45% a 65%';
+        bannerBadge.className = 'px-2 py-0.5 rounded text-[10px] font-extrabold bg-cyan-950 border border-cyan-800 text-cyan-300';
 
-        resTitle.innerText = 'Detonação Direta no Núcleo Super-resfriado';
-        resText.innerText = 'Injeta AgI diretamente na isoterma de -10°C. Reduz o granizo, mas impõe alto perigo de estilhaços em solo e fecha o tráfego aéreo.';
-        resEff.innerText = '20% a 40% (Alto risco balístico)';
-        resEff.className = 'font-mono font-bold text-amber-400';
+        resTitle.innerText = 'Semeadura Balística Ultra-Rápida';
+        resText.innerText = 'Alcança o núcleo ascendente concentrado em 40 segundos, glaciando a água super-resfriada antes do granizo crescer.';
+        resEff.innerText = '45% a 65% (Padrão Sérvia/Bulgária)';
+        resEff.className = 'font-mono font-bold text-cyan-400';
 
         launchRocket();
       }
       else if (mode === 'aviao') {
         active.classList.add('border-cyan-500', 'bg-cyan-950/40', 'text-cyan-300');
         bannerIcon.innerText = '✈️';
-        bannerTitle.innerText = 'Semeadura por Aeronave Tripulada (Alberta / EUA)';
-        bannerDesc.innerText = 'Avião bimotor voa sob a base do updraft queimando flares de asa diretamente no fluxo ascendente.';
+        bannerTitle.innerText = 'Semeadura Aérea com Aeronaves (Flares de AgI)';
+        bannerDesc.innerText = 'Aviões bimotores voam sob a base da tempestade no influxo ascendente, disparando flares de AgI diretamente na sucção.';
         bannerBadge.innerText = 'Eficácia: 30% a 50%';
-        bannerBadge.className = 'px-2 py-0.5 rounded text-[10px] font-extrabold bg-cyan-950 border border-cyan-800 text-cyan-400';
+        bannerBadge.className = 'px-2 py-0.5 rounded text-[10px] font-extrabold bg-cyan-950 border border-cyan-800 text-cyan-300';
 
-        resTitle.innerText = 'Injeção Direta no Updraft de Alimentação';
-        resText.innerText = 'Entrega os reagentes com precisão na boca de sucção da nuvem. O granizo é suprimido, mas o custo operacional é milionário e o risco de voo é extremo.';
-        resEff.innerText = '30% a 50% (Risco extremo ao piloto)';
+        resTitle.innerText = 'Injeção Direta no Influxo de Alimentação';
+        resText.innerText = 'Muito utilizado em Mendoza e Alberta, porém com risco de voo extremo em turbulência severa (wind shear e microbursts).';
+        resEff.innerText = '30% a 50% (Risco Operacional Alto)';
         resEff.className = 'font-mono font-bold text-cyan-400';
 
-        aircraft = { x: 50, y: 340, vx: 2 };
+        aircraft = { x: 50, y: 350, vx: 2.2, flareTimer: 0 };
       }
       else if (mode === 'drone') {
         active.classList.add('border-cyan-500', 'bg-cyan-950/40', 'text-cyan-300');
-        bannerIcon.innerText = '🤖';
-        bannerTitle.innerText = 'Drone Agrícola de Precisão (Uso Duplo)';
-        bannerDesc.innerText = 'Drone decola da fazenda, sobe com precisão até a base da nuvem, aciona flares de AgI/sais e retorna com segurança.';
+        bannerIcon.innerText = '🛸';
+        bannerTitle.innerText = 'Drones Agrícolas Polivalentes Autônomos (VANTs)';
+        bannerDesc.innerText = 'Drone sobe com precisão cirúrgica guiado por radar Doppler, semeia o jato concentrado e retorna para recarga.';
         bannerBadge.innerText = 'Eficácia: 40% a 60%';
         bannerBadge.className = 'px-2 py-0.5 rounded text-[10px] font-extrabold bg-cyan-950 border border-cyan-800 text-cyan-300';
 
@@ -715,7 +849,9 @@
     document.getElementById('btn-clear-swath').addEventListener('click', () => {
       swathStones = [];
       swathCount = 0;
+      meltedCount = 0;
       document.getElementById('swath-count-val').innerText = '0';
+      document.getElementById('melted-count-val').innerText = '0';
     });
 
     // ==================== MAIN ANIMATION LOOP ====================
@@ -733,19 +869,12 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // 1. SKY & ALTITUDE LAYERS
-      // Stratosphere / Cirrus Top (0 - 100m)
       ctx.fillStyle = '#060b19';
       ctx.fillRect(0, 0, canvas.width, 110);
-
-      // Upper Cloud / Homogeneous nucleation zone (-40°C: 110 - 160)
       ctx.fillStyle = '#0b1426';
       ctx.fillRect(0, 110, canvas.width, 60);
-
-      // Supercooled Growth Zone (-10°C to -25°C: 160 - 320)
       ctx.fillStyle = '#0f1d38';
       ctx.fillRect(0, 160, canvas.width, 160);
-
-      // Warm Melting Layer (320 - 520)
       ctx.fillStyle = '#1c1c30';
       ctx.fillRect(0, 320, canvas.width, 200);
 
@@ -771,10 +900,16 @@
       ctx.lineTo(canvas.width, 320);
       ctx.stroke();
       ctx.setLineDash([]);
+      
+      // Warm melting layer indicator
       ctx.fillStyle = '#38bdf8';
       ctx.fillText('4.000m (Isoterma de 0°C) - Nível de Congelamento', 15, 315);
+      ctx.fillStyle = 'rgba(249, 115, 22, 0.7)';
+      ctx.font = 'bold 9px Inter, sans-serif';
+      ctx.fillText('▼ CAMADA QUENTE (T > 0°C): Granizos menores derretem e viram chuva!', 15, 335);
 
       ctx.fillStyle = '#94a3b8';
+      ctx.font = '10px Inter, sans-serif';
       ctx.fillText('Superfície (Solo)', 15, 540);
 
       // 3. DRAW VOLUMETRIC CUMULONIMBUS CLOUD
@@ -789,34 +924,99 @@
         ctx.fill();
       });
 
-      // 5. DRAW UPDRAFT STREAMLINES (VIOLENT UPWARD FLOW)
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.2)';
-      ctx.lineWidth = 2;
-      for (let i = 0; i < 4; i++) {
-        let ux = 290 + i * 40;
+      // 5. DRAW CONCENTRATED INTENSE UPDRAFT CORE (CHIMNEY)
+      // Core glowing corridor
+      let coreGrad = ctx.createLinearGradient(CORE_X - CORE_W/2, 0, CORE_X + CORE_W/2, 0);
+      coreGrad.addColorStop(0, 'rgba(6, 182, 212, 0.02)');
+      coreGrad.addColorStop(0.5, 'rgba(56, 189, 248, 0.22)');
+      coreGrad.addColorStop(1, 'rgba(6, 182, 212, 0.02)');
+      ctx.fillStyle = coreGrad;
+      ctx.fillRect(CORE_X - CORE_W/2, 130, CORE_W, 230);
+
+      // Core boundary dashed lines
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(CORE_X - CORE_W/2, 360);
+      ctx.lineTo(CORE_X - CORE_W/2, 130);
+      ctx.moveTo(CORE_X + CORE_W/2, 360);
+      ctx.lineTo(CORE_X + CORE_W/2, 130);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Inflow suction streamlines (converging from flanks into core base)
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.3)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(270, 390);
+      ctx.quadraticCurveTo(340, 370, CORE_X - 10, 350);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(490, 390);
+      ctx.quadraticCurveTo(420, 370, CORE_X + 10, 350);
+      ctx.stroke();
+
+      // High-velocity upward streamlines inside concentrated core
+      for (let i = -1; i <= 1; i++) {
+        let sx = CORE_X + i * 18;
+        ctx.strokeStyle = i === 0 ? 'rgba(255, 255, 255, 0.6)' : 'rgba(56, 189, 248, 0.45)';
+        ctx.lineWidth = i === 0 ? 2 : 1.5;
         ctx.beginPath();
-        ctx.moveTo(ux - 20, 500);
-        ctx.bezierCurveTo(ux, 380, ux - 40, 220, ux + 10, 140);
+        ctx.moveTo(sx, 355);
+        ctx.lineTo(sx, 135);
         ctx.stroke();
 
-        let headY = (frameCount * 2.5 + i * 80) % 360 + 140;
-        ctx.fillStyle = 'rgba(56, 189, 248, 0.5)';
+        let headY = 355 - ((frameCount * 6.0 + (i + 1) * 60) % 220);
+        ctx.fillStyle = i === 0 ? '#ffffff' : '#38bdf8';
         ctx.beginPath();
-        ctx.moveTo(ux - 12, headY);
-        ctx.lineTo(ux - 7, headY - 8);
-        ctx.lineTo(ux - 2, headY);
+        ctx.moveTo(sx - 5, headY + 8);
+        ctx.lineTo(sx, headY);
+        ctx.lineTo(sx + 5, headY + 8);
         ctx.fill();
       }
 
-      // 6. UPDATE & DRAW HAILSTONES
+      // Top Divergence arrows
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
+      ctx.beginPath();
+      ctx.moveTo(CORE_X, 135);
+      ctx.quadraticCurveTo(CORE_X - 60, 130, 240, 140);
+      ctx.moveTo(CORE_X, 135);
+      ctx.quadraticCurveTo(CORE_X + 60, 130, 520, 140);
+      ctx.stroke();
+
+      // Label on Concentrated Updraft
+      ctx.font = 'bold 11px Inter, sans-serif';
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText('⚡ Jato Ascendente Concentrado', CORE_X + 38, 230);
+      ctx.font = '9px Inter, sans-serif';
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText('w ≈ 38 m/s (137 km/h) | Sucção Estocástica', CORE_X + 38, 244);
+
+      // 6. DRAW FALLING RAIN DROPS (MELTED HAIL & PRECIPITATION)
+      for (let i = rainDrops.length - 1; i >= 0; i--) {
+        let p = rainDrops[i];
+        p.y += p.vy;
+        p.alpha -= 0.015;
+        ctx.beginPath();
+        ctx.moveTo(p.x, p.y);
+        ctx.lineTo(p.x, p.y + 6);
+        ctx.strokeStyle = `rgba(56, 189, 248, ${p.alpha})`;
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        if (p.alpha <= 0 || p.y >= 525) {
+          rainDrops.splice(i, 1);
+        }
+      }
+
+      // 7. UPDATE & DRAW HAILSTONES
       hailstones.forEach(h => {
         h.update();
         h.draw();
       });
 
-      // 7. DRAW ACCUMULATED "CORDÃO DE GRANIZO" (HAIL SWATH ON GROUND)
+      // 8. DRAW ACCUMULATED "CORDÃO DE GRANIZO" (HAIL SWATH ON GROUND)
       if (swathStones.length > 0) {
-        // White dense swath pile
         ctx.fillStyle = '#ffffff';
         swathStones.forEach(s => {
           ctx.beginPath();
@@ -827,13 +1027,53 @@
           ctx.stroke();
         });
 
-        // Label for hail swath
         ctx.font = 'bold 10px Inter, sans-serif';
         ctx.fillStyle = '#f8fafc';
         ctx.fillText('Cordão de Granizo (Hail Swath)', 330, 552);
       }
 
-      // 8. RENDER ACTIVE INTERVENTION TECHNOLOGY ON CANVAS
+      // 9. ONION-SKIN ANATOMY INSET (Corte Transversal com Anéis Concêntricos)
+      const boxX = canvas.width - 235;
+      const boxY = 15;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(boxX, boxY, 220, 84, 8);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.font = 'bold 9px Inter, sans-serif';
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText('🔬 Anatomia: Camadas Concêntricas', boxX + 10, boxY + 16);
+
+      const cutX = boxX + 35;
+      const cutY = boxY + 50;
+      const rings = [
+        { r: 24, stroke: '#94a3b8', fill: 'rgba(255,255,255,0.15)' },
+        { r: 18, stroke: '#38bdf8', fill: 'rgba(56,189,248,0.2)' },
+        { r: 12, stroke: '#ffffff', fill: 'rgba(255,255,255,0.4)' },
+        { r: 6, stroke: '#cbd5e1', fill: '#e2e8f0' }
+      ];
+      rings.forEach(rg => {
+        ctx.beginPath();
+        ctx.arc(cutX, cutY, rg.r, 0, Math.PI * 2);
+        ctx.fillStyle = rg.fill;
+        ctx.fill();
+        ctx.strokeStyle = rg.stroke;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      });
+
+      ctx.font = '8px Inter, sans-serif';
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fillText('• Núcleo: Graupel (embrião)', boxX + 70, boxY + 34);
+      ctx.fillText('• Anéis brancos: Rime (-20°C)', boxX + 70, boxY + 47);
+      ctx.fillText('• Anéis claros: Glaze (-5°C)', boxX + 70, boxY + 60);
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillText('★ Cada subida = +1 camada!', boxX + 70, boxY + 74);
+
+      // 10. RENDER ACTIVE INTERVENTION TECHNOLOGY ON CANVAS
       renderActiveIntervention();
     }
 
