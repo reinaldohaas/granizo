@@ -1,6 +1,7 @@
 import { create } from 'zustand';
-import { SimulationParams, GroundHydrometeorStats, ParticleTelemetry, ScenarioPreset } from '../types/simulationTypes';
+import { SimulationParams, GroundHydrometeorStats, ParticleTelemetry, ScenarioPreset, SoundingNode } from '../types/simulationTypes';
 import { ScenarioFactory } from '../simulation/ScenarioFactory';
+import { AtmosphericProfile } from '../simulation/AtmosphericProfile';
 
 interface SimulationState {
   params: SimulationParams;
@@ -18,6 +19,7 @@ interface SimulationState {
   setParam: <K extends keyof SimulationParams>(key: K, value: SimulationParams[K]) => void;
   setScenario: (preset: ScenarioPreset) => void;
   setStage: (stage: number) => void;
+  setSoundingNode: (index: number, tempC: number, dewPointC: number) => void;
   toggleRunning: () => void;
   toggleTrajectories: () => void;
   toggleIsotherms: () => void;
@@ -67,6 +69,29 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     set((state) => ({
       params: { ...state.params, currentStage: stage }
     }));
+  },
+
+  setSoundingNode: (index, tempC, dewPointC) => {
+    set((state) => {
+      const updatedNodes = [...state.params.soundingNodes];
+      if (index >= 0 && index < updatedNodes.length) {
+        updatedNodes[index] = {
+          ...updatedNodes[index],
+          tempC,
+          dewPointC: Math.min(tempC, dewPointC) // Dew point cannot exceed air temp physically
+        };
+      }
+      // Recompute freezing level if needed
+      const atmos = new AtmosphericProfile();
+      const zFz = atmos.getFreezingLevel(updatedNodes, state.params.zFreezingKm);
+      return {
+        params: {
+          ...state.params,
+          soundingNodes: updatedNodes,
+          zFreezingKm: zFz
+        }
+      };
+    });
   },
 
   toggleRunning: () => set((state) => ({ isRunning: !state.isRunning })),

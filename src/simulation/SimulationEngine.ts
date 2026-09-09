@@ -18,8 +18,7 @@ export class SimulationEngine {
   public groundStats: GroundHydrometeorStats;
   public selectedIndex: number = 0;
 
-  // Fixed time step accumulator pattern
-  public static readonly FIXED_DT = 0.03; // 30 milliseconds physics integration step
+  public static readonly FIXED_DT = 0.03;
   private accumulator: number = 0;
 
   constructor(initialParams: SimulationParams) {
@@ -51,7 +50,6 @@ export class SimulationEngine {
   public update(dtWallSec: number): void {
     this.accumulator += dtWallSec * this.params.timeScale;
 
-    // Sub-stepping fixed timestep loop
     const maxSteps = 8;
     let steps = 0;
     while (this.accumulator >= SimulationEngine.FIXED_DT && steps < maxSteps) {
@@ -64,6 +62,7 @@ export class SimulationEngine {
   private physicsStep(dt: number): void {
     this.simTimeSec += dt;
     const count = this.particles.activeCount;
+    const nodes = this.params.soundingNodes;
 
     for (let i = 0; i < count; i++) {
       if (this.particles.alive[i] === 0) continue;
@@ -74,7 +73,7 @@ export class SimulationEngine {
       let mass = this.particles.masses[i];
       let type = this.particles.types[i] as ParticleType;
 
-      const T = this.atmos.getTemperature(z, this.params.zFreezingKm);
+      const T = this.atmos.getTemperature(z, this.params.zFreezingKm, nodes);
       const rhoAir = this.atmos.getAirDensity(z);
       const isGlaze = this.particles.regimes[i] === GrowthRegime.WET;
       const rhoHail = HailstonePhysics.getDensity(diam, isGlaze);
@@ -83,7 +82,7 @@ export class SimulationEngine {
       const { u: uAir, w: wAir } = this.wind.evaluate(x, z, this.simTimeSec, this.params);
       const vt = HailstonePhysics.calculateTerminalVelocity(diam, rhoAir, rhoHail);
 
-      // 2. Continuous Aerodynamic Motion Integration
+      // 2. Aerodynamic Motion Integration
       const { vx: nextVx, vz: nextVz } = HailstonePhysics.updateVelocity(
         this.particles.velocitiesX[i],
         this.particles.velocitiesZ[i],
@@ -98,13 +97,11 @@ export class SimulationEngine {
       this.particles.velocitiesX[i] = nextVx;
       this.particles.velocitiesZ[i] = nextVz;
 
-      // Update positions: x in km, z in km
       x += (nextVx * dt) / 1000.0;
       z += (nextVz * dt) / 1000.0;
       this.particles.positionsX[i] = x;
       this.particles.positionsZ[i] = z;
 
-      // Trajectory record update
       const traj = this.particles.trajectories[i];
       if (traj.length === 0 || Math.hypot(x - traj[traj.length - 1].x, z - traj[traj.length - 1].z) > 0.15) {
         traj.push({ x, z, d: diam });
@@ -112,8 +109,7 @@ export class SimulationEngine {
       }
 
       // 3. Microphysical Transitions
-      // Promote droplets to graupel upon riming
-      if (this.params.currentStage >= 3 && type === ParticleType.SLW_DROP && z > this.params.zFreezingKm && T < -8.0) {
+      if (this.params.currentStage >= 3 && type === ParticleType.SLW_DROP && T < -8.0) {
         if (globalRNG.next() < 0.015) {
           type = ParticleType.GRAUPEL;
           this.particles.types[i] = type;
@@ -121,8 +117,8 @@ export class SimulationEngine {
         }
       }
 
-      // 4. Growth by Accretion in Supercooled Liquid Water Zone (-10°C to -30°C)
-      if (this.params.currentStage >= 3 && z > this.params.zFreezingKm && z < 11.0 && (type === ParticleType.GRAUPEL || type === ParticleType.HAIL)) {
+      // 4. Growth by Accretion in Supercooled Liquid Water Zone (T < 0°C & T > -40°C)
+      if (this.params.currentStage >= 3 && T <= 0.0 && T >= -40.0 && (type === ParticleType.GRAUPEL || type === ParticleType.HAIL)) {
         const lwc = this.wind.getLWC(x, z, this.params, T);
         const vRel = Math.hypot(nextVx - uAir, nextVz - wAir);
 
@@ -133,7 +129,6 @@ export class SimulationEngine {
           mass += deltaMassG;
           this.particles.waterCollected[i] += deltaMassG;
 
-          // Determine dry vs wet growth regime
           const regime = FreezingModel.evaluateRegime(T, dmDtGPerS, diam, vRel);
           this.particles.regimes[i] = regime;
 
@@ -145,7 +140,6 @@ export class SimulationEngine {
             this.particles.types[i] = type;
           }
 
-          // Layer accumulation check
           const lastLayer = this.particles.layerHistories[i][this.particles.layerHistories[i].length - 1];
           if (!lastLayer || (lastLayer.regime !== regime && diam - lastLayer.thicknessMm > 2.0)) {
             this.particles.layers[i]++;
@@ -161,8 +155,8 @@ export class SimulationEngine {
         }
       }
 
-      // 5. Melting below Freezing Level (T > 0°C, z < zFreezingKm)
-      if (z <= this.params.zFreezingKm) {
+      // 5. Melting below Freezing Level (T > 0°C)
+      if (T > 0.0) {
         this.particles.regimes[i] = GrowthRegime.MELTING;
         const fallSpeed = Math.abs(nextVz);
         const dMeltGPerS = MeltingModel.calculateMeltingRate(T, diam, fallSpeed, this.params.subCloudHumidity);
@@ -171,14 +165,12 @@ export class SimulationEngine {
         mass = Math.max(0.001, mass - meltLossG);
         diam = HailstonePhysics.diameterFromMass(mass, rhoHail);
 
-        // Transition to rain when melted sufficiently
         if (diam <= 1.2 || mass <= 0.005) {
           type = ParticleType.RAIN;
           this.particles.types[i] = type;
         }
       }
 
-      // Store updated properties
       this.particles.diameters[i] = diam;
       this.particles.masses[i] = mass;
 
@@ -187,7 +179,6 @@ export class SimulationEngine {
         this.particles.positionsZ[i] = 0;
         this.particles.alive[i] = 0;
 
-        // Categorize into hydrometeor distribution
         this.groundStats.totalGrounded++;
         if (type === ParticleType.RAIN || diam <= 1.5) {
           this.groundStats.rainCount++;
@@ -201,14 +192,12 @@ export class SimulationEngine {
           this.groundStats.giantHailCount++;
         }
 
-        // Respawn particle after delay
         const respawnIndex = i;
         setTimeout(() => {
           this.particles.spawnParticle(respawnIndex, this.params.zFreezingKm, this.params.currentStage, false);
         }, 600 + Math.random() * 1200);
       }
 
-      // Cloud Boundary Respawn
       if (x < 1.0 || x > 22.0 || z > 14.0) {
         this.particles.spawnParticle(i, this.params.zFreezingKm, this.params.currentStage, false);
       }

@@ -22,6 +22,13 @@ export interface LayerRecord {
   timestamp: number;
 }
 
+export interface SoundingNode {
+  zKm: number;
+  tempC: number;
+  dewPointC: number;
+  label?: string;
+}
+
 export interface ParticleTelemetry {
   id: number;
   type: ParticleType;
@@ -57,6 +64,7 @@ export interface SimulationParams {
   timeScale: number;        // Speed multiplier (0.2 to 3.0)
   randomSeed: number;       // Seed for PRNG reproducibility
   currentStage: number;     // 1 to 4
+  soundingNodes: SoundingNode[]; // Interactive NOAA thermodynamic profile
 }
 
 export interface GroundHydrometeorStats {
@@ -69,4 +77,4 @@ export interface GroundHydrometeorStats {
   totalGrounded: number;
 }
 
-export type ScenarioPreset = 'comum' | 'forte' | 'supercelula' | 'derretimento_intenso';
+export type ScenarioPreset = 'comum' | 'forte' | 'supercelula' | 'derretimento_intenso' | 'neve_inverno' | 'inversao_sleet';
