@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Apresentação e Infográfico Interativo: Física e Supressão de Granizo</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    @keyframes pulse-wave {
+      0% { r: 10; opacity: 0.9; stroke-width: 4; }
+      100% { r: 160; opacity: 0; stroke-width: 1; }
+    }
+    .wave-anim { animation: pulse-wave 2s cubic-out infinite; }
+    .wave-anim-delay-1 { animation: pulse-wave 2s cubic-out 0.6s infinite; }
+    .wave-anim-delay-2 { animation: pulse-wave 2s cubic-out 1.2s infinite; }
+    
+    @keyframes float-plume {
+      0% { transform: translate(0, 0) scale(0.6); opacity: 0.8; }
+      50% { transform: translate(30px, -80px) scale(1.2); opacity: 0.5; }
+      100% { transform: translate(70px, -180px) scale(1.8); opacity: 0; }
+    }
+    .plume-anim { animation: float-plume 3s ease-out infinite; }
+
+    @keyframes rocket-flight {
+      0% { transform: translate(0, 0); opacity: 1; }
+      80% { transform: translate(60px, -220px); opacity: 1; }
+      85% { transform: translate(60px, -220px) scale(2); opacity: 1; }
+      100% { transform: translate(60px, -220px) scale(3.5); opacity: 0; }
+    }
+    .rocket-anim { animation: rocket-flight 3.5s ease-in-out infinite; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased selection:bg-cyan-500 selection:text-white">
+
+  <!-- Top Navigation Header -->
+  <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 00-9.78 2.096A4.001 4.001 0 003 15z"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold text-white tracking-tight">Granizo & Modificação Atmosférica</h1>
+          <p class="text-xs text-cyan-400 font-medium">Relatório Técnico & Infográfico Físico Interativo</p>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <nav class="flex items-center space-x-1 bg-slate-950 p-1.5 rounded-xl border border-slate-800 text-sm">
+        <button onclick="switchTab('tab-presentation')" id="btn-tab-presentation" class="tab-btn px-4 py-1.5 rounded-lg font-medium transition-all bg-cyan-600 text-white shadow">
+          📊 Apresentação Executiva
+        </button>
+        <button onclick="switchTab('tab-formation')" id="btn-tab-formation" class="tab-btn px-4 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white">
+          🌪️ Como se Forma o Granizo
+        </button>
+        <button onclick="switchTab('tab-combate')" id="btn-tab-combate" class="tab-btn px-4 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white">
+          🛡️ Comparativo dos Sistemas
+        </button>
+        <button onclick="switchTab('tab-costs')" id="btn-tab-costs" class="tab-btn px-4 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-white">
+          💰 Custos & Drones
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="max-w-7xl mx-auto px-4 py-8">
+
+    <!-- ==================== TAB 1: APRESENTAÇÃO EXECUTIVA ==================== -->
+    <section id="tab-presentation" class="tab-content space-y-8">
+      
+      <!-- Hero Banner -->
+      <div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-900/40 via-slate-900 to-slate-950 border border-slate-800 p-8 shadow-2xl">
+        <div class="relative z-10 max-w-3xl space-y-4">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-semibold uppercase tracking-wider">
+            Revisão Científica e Evidências Observacionais 2026
+          </div>
+          <h2 class="text-3xl sm:text-4xl font-extrabold text-white leading-tight">
+            A Física da Formação de Granizo e a Verdade sobre os Métodos de Supressão
+          </h2>
+          <p class="text-slate-300 text-base sm:text-lg leading-relaxed">
+            Uma análise física rigorosa da dinâmica convectiva em Santa Catarina, da quebra de paradigma climático na Ilha de Florianópolis, da desmistificação centenária dos canhões sônicos e das novas fronteiras com drones agrícolas de uso duplo.
+          </p>
+          <div class="pt-2 flex flex-wrap gap-3">
+            <a href="https://www.youtube.com/watch?v=IRtXNqBBxX8&t=135s" target="_blank" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-semibold transition shadow-lg shadow-red-600/20">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>
+              Assistir Vídeo: "Uma MENTIRA com mais de 100 anos"
+            </a>
+            <button onclick="switchTab('tab-formation')" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm font-semibold border border-slate-700 transition">
+              Iniciar Simulação Física ➔
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4 Key Finding Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-cyan-500/40 transition group">
+          <div class="w-10 h-10 rounded-lg bg-red-500/10 text-red-400 flex items-center justify-center mb-4 group-hover:scale-110 transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
+          </div>
+          <h3 class="font-bold text-white text-base mb-1">Canhão de Som: Eficácia 0%</h3>
+          <p class="text-sm text-slate-400 leading-relaxed">
+            Medições em 100 m registram apenas <strong>1,3 hPa</strong> perante os <strong>300 hPa</strong> necessários para romper gelo. A 8.000 m, a pressão é zero. Rejeitado pela OMM.
+          </p>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-cyan-500/40 transition group">
+          <div class="w-10 h-10 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center mb-4 group-hover:scale-110 transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <h3 class="font-bold text-white text-base mb-1">Clausius-Clapeyron: +7% Umidade</h3>
+          <p class="text-sm text-slate-400 leading-relaxed">
+            O aquecimento da baixa atmosfera superalimenta o CAPE (&gt;3.000 J/kg), gerando correntes ascendentes violentas (&gt;50 m/s) que sustentam pedras gigantes.
+          </p>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-cyan-500/40 transition group">
+          <div class="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center mb-4 group-hover:scale-110 transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+          </div>
+          <h3 class="font-bold text-white text-base mb-1">Telas PEAD: Única Garantia 100%</h3>
+          <p class="text-sm text-slate-400 leading-relaxed">
+            Barreira mecânica com dissipação elástica de energia cinética ($E_k \propto r^4$). Padrão absoluto na Itália, Argentina e nos pomares modernos de Fraiburgo e Vacaria.
+          </p>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-cyan-500/40 transition group">
+          <div class="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-4 group-hover:scale-110 transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          </div>
+          <h3 class="font-bold text-white text-base mb-1">Drones Agrícolas Polivalentes</h3>
+          <p class="text-sm text-slate-400 leading-relaxed">
+            Com baterias de silício-carbono (400 Wh/kg), a frota agrícola de pulverização realiza semeadura cirúrgica autônoma guiada por radar sem colocar pilotos em risco.
+          </p>
+        </div>
+
+      </div>
+
+      <!-- Dicotomia do Granizo e Aerossóis -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+              <span>🌡️</span> A Dicotomia de Tamanho no Clima Quente
+            </h3>
+            <span class="text-xs bg-cyan-950 text-cyan-400 px-2.5 py-0.5 rounded-full border border-cyan-800">Raupach et al. (Nature 2021)</span>
+          </div>
+          <p class="text-sm text-slate-300">
+            A elevação das temperaturas globais gera dois efeitos simultâneos e opostos sobre a precipitação de gelo:
+          </p>
+          <div class="grid grid-cols-2 gap-4 pt-2">
+            <div class="bg-slate-950/80 p-4 rounded-lg border border-slate-800/80">
+              <span class="text-emerald-400 font-bold text-sm block mb-1">🔻 Menos Granizo Pequeno (&lt;2 cm)</span>
+              <p class="text-xs text-slate-400">
+                A subida da isoterma de 0°C cria uma camada quente de derretimento mais espessa. Granizos finos derretem antes de chegar ao chão, virando chuva líquida.
+              </p>
+            </div>
+            <div class="bg-slate-950/80 p-4 rounded-lg border border-red-900/40">
+              <span class="text-red-400 font-bold text-sm block mb-1">🔺 Mais Granizo Gigante (&gt;5 cm)</span>
+              <p class="text-xs text-slate-400">
+                O vapor extra alimenta correntes ascendentes supersônicas que sustentam pedras na zona de super-resfriamento por mais tempo. O gelo resultante possui inércia térmica suficiente para atravessar o ar quente.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-6 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+              <span>🚢</span> O Efeito da Redução de Aerossóis (IMO 2020 & Diesel)
+            </h3>
+            <span class="text-xs bg-amber-950 text-amber-400 px-2.5 py-0.5 rounded-full border border-amber-800">Yuan et al. (Science 2022)</span>
+          </div>
+          <p class="text-sm text-slate-300">
+            A despoluição do diesel urbano e a norma marítima IMO 2020 (que cortou o enxofre em combustíveis navais de 3,5% para 0,5%) produziram dois efeitos microfísicos:
+          </p>
+          <ul class="space-y-2 text-xs text-slate-300">
+            <li class="flex items-start gap-2">
+              <span class="text-amber-400 font-bold mt-0.5">•</span>
+              <span><strong>Desmascaramento do Aquecimento (Fim do Global Dimming):</strong> A remoção de sulfatos limpou a atmosfera oceânica, provocando recordes de aquecimento da superfície do mar e maior fluxo de calor latente.</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-amber-400 font-bold mt-0.5">•</span>
+              <span><strong>Espectro de Gotas Maiores (Microfísica):</strong> Menos núcleos de condensação (CCN) fazem a água condensar em gotas líquidas maiores, que possuem taxa de captura e congelamento (*riming*) ordens de magnitude superior, acelerando a formação de pedras gigantes.</span>
+            </li>
+          </ul>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ==================== TAB 2: INFOGRÁFICO ANIMADO DA FORMAÇÃO DO GRANIZO ==================== -->
+    <section id="tab-formation" class="tab-content hidden space-y-6">
+      
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4 mb-6">
+          <div>
+            <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+              <span>🌪️</span> Simulação Física da Nuvem Cumulonimbus
+            </h2>
+            <p class="text-sm text-slate-400">
+              Visualize como o embrião de gelo recircula no *updraft*, acumula camadas e precipita por gravidade.
+            </p>
+          </div>
+          
+          <!-- Interactive Controls -->
+          <div class="flex flex-wrap items-center gap-3">
+            <div class="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800 text-xs">
+              <span class="text-slate-400">Força do Updraft (CAPE):</span>
+              <input type="range" id="updraft-slider" min="15" max="55" value="35" class="w-24 accent-cyan-500 cursor-pointer">
+              <span id="updraft-val" class="font-bold text-cyan-400">35 m/s</span>
+            </div>
+            <button id="btn-toggle-sim" class="px-4 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold shadow transition">
+              Pausar / Retomar
+            </button>
+            <button id="btn-reset-hail" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs border border-slate-700 transition">
+              Reiniciar Pedra
+            </button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          <!-- Canvas Simulation Area (8 cols) -->
+          <div class="lg:col-span-8 bg-slate-950 rounded-xl border border-slate-800 relative overflow-hidden flex flex-col items-center justify-center p-2">
+            <canvas id="cloud-canvas" width="720" height="520" class="w-full h-auto max-w-full rounded-lg bg-slate-950 block"></canvas>
+            
+            <!-- Dynamic Telemetry Overlay -->
+            <div class="absolute top-4 left-4 bg-slate-900/80 backdrop-blur border border-slate-700/60 rounded-lg p-3 text-xs space-y-1 shadow-lg pointer-events-none">
+              <div class="text-slate-400">Status do Granizo: <span id="telemetry-status" class="font-bold text-cyan-400">Em Crescimento</span></div>
+              <div class="text-slate-400">Diâmetro: <span id="telemetry-diameter" class="font-bold text-white">2.8 cm</span></div>
+              <div class="text-slate-400">Velocidade Terminal ($v_t$): <span id="telemetry-vt" class="font-bold text-amber-400">22.4 m/s</span></div>
+              <div class="text-slate-400">Energia Cinética ($E_k$): <span id="telemetry-ek" class="font-bold text-red-400">2.4 J</span></div>
+            </div>
+          </div>
+
+          <!-- Explanatory Side Panel (4 cols) -->
+          <div class="lg:col-span-4 flex flex-col justify-between space-y-4">
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 space-y-3">
+              <h4 class="font-bold text-cyan-400 text-sm flex items-center gap-2">
+                <span>📍</span> Camadas Térmicas da Tempestade
+              </h4>
+              <div class="space-y-2 text-xs">
+                <div class="border-l-2 border-indigo-500 pl-2.5 py-1">
+                  <span class="font-semibold text-indigo-300 block">10.000m a 12.000m (-40°C a -50°C)</span>
+                  <span class="text-slate-400">Zona de bigorna (Cirrus). Congelamento homogêneo de toda água pura.</span>
+                </div>
+                <div class="border-l-2 border-cyan-500 pl-2.5 py-1 bg-cyan-950/20 rounded-r">
+                  <span class="font-semibold text-cyan-300 block">5.000m a 8.000m (-10°C a -25°C)</span>
+                  <span class="text-cyan-200 font-medium">ZONA CRÍTICA DE CRESCIMENTO:</span>
+                  <span class="text-slate-300 block mt-0.5">Água líquida super-resfriada (SLW) colide e congela em camadas alternadas sobre o embrião (*graupel*).</span>
+                </div>
+                <div class="border-l-2 border-amber-500 pl-2.5 py-1">
+                  <span class="font-semibold text-amber-300 block">3.500m a 4.500m (Isoterma de 0°C)</span>
+                  <span class="text-slate-400">Nível de Congelamento. Abaixo dele, o gelo começa a sofrer fusão térmica.</span>
+                </div>
+                <div class="border-l-2 border-slate-600 pl-2.5 py-1">
+                  <span class="font-semibold text-slate-400 block">Superfície (Solo)</span>
+                  <span class="text-slate-500">Impacto a até 180 km/h se a pedra for grande (&gt;5 cm).</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Kinetic Energy Formula Card -->
+            <div class="bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs space-y-2">
+              <span class="font-bold text-white block">Equações Governantes:</span>
+              <div class="font-mono bg-slate-900 p-2 rounded text-cyan-300 text-center">
+                vt = √(8·r·ρ_gelo·g / 3·ρ_ar·Cd)<br>
+                Ek = ½·m·vt² ∝ r^4
+              </div>
+              <p class="text-slate-400 text-[11px] leading-tight">
+                Duplicar o diâmetro ($2r$) multiplica a massa por 8 e a energia de impacto por mais de 16 vezes.
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ==================== TAB 3: COMPARATIVO INTERATIVO DOS SISTEMAS ==================== -->
+    <section id="tab-combate" class="tab-content hidden space-y-6">
+      
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+        <div class="border-b border-slate-800 pb-4 mb-6">
+          <h2 class="text-2xl font-bold text-white flex items-center gap-2">
+            <span>🛡️</span> Simulador Interativo: Como Cada Sistema Tenta Agir
+          </h2>
+          <p class="text-sm text-slate-400">
+            Selecione uma tecnologia abaixo para disparar a animação mecânica e analisar a eficácia científica real.
+          </p>
+        </div>
+
+        <!-- System Selector Buttons -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-6">
+          <button onclick="selectSystem('som')" id="btn-sys-som" class="sys-btn px-3 py-2.5 rounded-xl border border-red-500/50 bg-red-950/40 text-red-300 text-xs font-bold transition flex flex-col items-center gap-1.5 shadow">
+            <span>📢 Canhão Sônico</span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-red-900/60 text-red-200">Eficácia: 0%</span>
+          </button>
+          <button onclick="selectSystem('queimador')" id="btn-sys-queimador" class="sys-btn px-3 py-2.5 rounded-xl border border-slate-800 bg-slate-950 text-slate-400 text-xs font-bold transition flex flex-col items-center gap-1.5 hover:border-slate-700">
+            <span>🔥 Queimador Solo (AgI)</span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">15% a 30%</span>
+          </button>
+          <button onclick="selectSystem('foguete')" id="btn-sys-foguete" class="sys-btn px-3 py-2.5 rounded-xl border border-slate-800 bg-slate-950 text-slate-400 text-xs font-bold transition flex flex-col items-center gap-1.5 hover:border-slate-700">
+            <span>🚀 Foguetes AgI</span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">20% a 40%</span>
+          </button>
+          <button onclick="selectSystem('aviao')" id="btn-sys-aviao" class="sys-btn px-3 py-2.5 rounded-xl border border-slate-800 bg-slate-950 text-slate-400 text-xs font-bold transition flex flex-col items-center gap-1.5 hover:border-slate-700">
+            <span>✈️ Aeronave Tripulada</span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300">30% a 50%</span>
+          </button>
+          <button onclick="selectSystem('telas')" id="btn-sys-telas" class="sys-btn px-3 py-2.5 rounded-xl border border-slate-800 bg-slate-950 text-slate-400 text-xs font-bold transition flex flex-col items-center gap-1.5 hover:border-slate-700">
+            <span>🕸️ Telas PEAD (Física)</span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-300">100% Garantida</span>
+          </button>
+          <button onclick="selectSystem('drones')" id="btn-sys-drones" class="sys-btn px-3 py-2.5 rounded-xl border border-slate-800 bg-slate-950 text-slate-400 text-xs font-bold transition flex flex-col items-center gap-1.5 hover:border-slate-700">
+            <span>🤖 Drones de Precisão</span>
+            <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300">40% a 60%</span>
+          </button>
+        </div>
+
+        <!-- Simulation Screen & Technical Sheet -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          
+          <!-- Animation SVG Box (7 cols) -->
+          <div class="lg:col-span-7 bg-slate-950 rounded-xl border border-slate-800 p-4 relative min-h-[380px] flex items-center justify-center overflow-hidden">
+            
+            <!-- Background Cloud -->
+            <svg class="absolute inset-0 w-full h-full" viewBox="0 0 500 350" preserveAspectRatio="none">
+              <!-- Sky gradient -->
+              <defs>
+                <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#0b1329" />
+                  <stop offset="60%" stop-color="#141d38" />
+                  <stop offset="100%" stop-color="#1a202c" />
+                </linearGradient>
+              </defs>
+              <rect width="500" height="350" fill="url(#skyGrad)" />
+              
+              <!-- Clouds at top -->
+              <path d="M 20 60 Q 60 20 120 40 Q 180 10 260 30 Q 340 15 400 45 Q 480 30 490 90 L 490 140 Q 400 160 300 140 Q 200 170 100 150 L 10 140 Z" fill="#2d3748" opacity="0.8" />
+              <path d="M 50 70 Q 100 35 180 50 Q 250 25 320 50 Q 380 35 440 70 L 440 130 Q 320 145 220 130 Q 120 150 40 120 Z" fill="#4a5568" opacity="0.6" />
+              
+              <!-- Freezing level line (0°C) -->
+              <line x1="0" y1="160" x2="500" y2="160" stroke="#0ea5e9" stroke-dasharray="4" opacity="0.6" />
+              <text x="490" y="155" fill="#38bdf8" font-size="9" text-anchor="end">Nível de Congelamento (Isoterma 0°C)</text>
+
+              <!-- Ground line -->
+              <rect x="0" y="320" width="500" height="30" fill="#0f172a" />
+              <line x1="0" y1="320" x2="500" y2="320" stroke="#334155" stroke-width="2" />
+            </svg>
+
+            <!-- Dynamic Interactive Animation Container -->
+            <div id="animation-viewport" class="relative z-10 w-full h-full min-h-[340px]">
+              <!-- Injected by JavaScript -->
+            </div>
+
+          </div>
+
+          <!-- Scientific Evaluation & Data Card (5 cols) -->
+          <div class="lg:col-span-5 bg-slate-950 border border-slate-800 rounded-xl p-5 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between mb-3 border-b border-slate-800 pb-2">
+                <h3 id="sys-title" class="font-bold text-white text-base">Canhões Antigranizo (Emissão Sônica)</h3>
+                <span id="sys-badge" class="px-2.5 py-0.5 rounded text-xs font-extrabold bg-red-950 border border-red-800 text-red-400">
+                  Eficácia: 0%
+                </span>
+              </div>
+
+              <div class="space-y-3 text-xs text-slate-300">
+                <div>
+                  <span class="text-slate-500 font-semibold block uppercase text-[10px]">Mecanismo Proposto:</span>
+                  <p id="sys-mechanism" class="text-slate-300 leading-relaxed">
+                    Detonação de gás acetileno em câmara de combustão, canalizada por cone difusor para lançar ondas acústicas verticais a cada 5 segundos.
+                  </p>
+                </div>
+
+                <div>
+                  <span class="text-slate-500 font-semibold block uppercase text-[10px]">Veredito Científico & Física Real:</span>
+                  <p id="sys-scientific" class="text-slate-300 leading-relaxed">
+                    A onda de choque se degrada em som comum a poucos metros do solo. A pressão medida a 100 m é de míseros <strong>1,3 hPa</strong>, incapaz de alterar uma pedra de gelo (exige <strong>300 hPa</strong>). A 8.000 m, a sobrepressão é nula.
+                  </p>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                  <div class="bg-slate-900 p-2.5 rounded border border-slate-800">
+                    <span class="text-slate-500 text-[10px] block">Consenso OMM:</span>
+                    <span id="sys-omsm" class="font-bold text-red-400">Rejeitado</span>
+                  </div>
+                  <div class="bg-slate-900 p-2.5 rounded border border-slate-800">
+                    <span class="text-slate-500 text-[10px] block">Custo por Ponto:</span>
+                    <span id="sys-cost" class="font-bold text-slate-200">~R$ 900.000</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Video / Citation Note -->
+            <div id="sys-extra-note" class="mt-4 p-3 bg-slate-900/80 rounded-lg border border-slate-800 text-[11px] text-slate-400 flex items-center gap-2">
+              <span class="text-red-400 text-base">▶️</span>
+              <span>Tema analisado no vídeo: <em>"Uma MENTIRA com mais de 100 anos de idade?"</em> (Guia da Floresta).</span>
+            </div>
+
+          </div>
+
+        </div>
+
+        <!-- Global Adoption Summary Accordion -->
+        <div class="mt-6 pt-4 border-t border-slate-800 text-xs text-slate-400">
+          <span class="text-white font-bold block mb-1">Adoção Global Resumida:</span>
+          <span><strong>Itália:</strong> Migração total para Telas de PEAD após 1970. | <strong>França:</strong> Rede ANELFA ativa com geradores de solo de AgI. | <strong>Argentina (Mendoza):</strong> Encerrou aviões de semeadura em 2024 após 60 anos sem comprovação. | <strong>Canadá (Alberta):</strong> Aviões mantidos por seguradoras privadas. | <strong>China:</strong> Baterias estatais com artilharia, foguetes e drones.</span>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- ==================== TAB 4: CUSTOS EM LARGA ESCALA & FRONTEIRA DOS DRONES ==================== -->
+    <section id="tab-costs" class="tab-content hidden space-y-6">
+      
+      <!-- Economic Modeling Table (50k ha) -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+        <div class="border-b border-slate-800 pb-3">
+          <h3 class="text-xl font-bold text-white flex items-center gap-2">
+            <span>💰</span> Modelagem Econômica de Grande Escala (50.000 Hectares / 10 Anos)
+          </h3>
+          <p class="text-xs text-slate-400">
+            Comparativo de investimento inicial (CAPEX), manutenção anual (OPEX) e retorno técnico de proteção real.
+          </p>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b border-slate-800 text-slate-400 uppercase text-[10px]">
+                <th class="py-3 px-3">Tecnologia</th>
+                <th class="py-3 px-3">Estrutura Necessária</th>
+                <th class="py-3 px-3">CAPEX Inicial</th>
+                <th class="py-3 px-3">OPEX Anual</th>
+                <th class="py-3 px-3">Total (10 Anos)</th>
+                <th class="py-3 px-3 text-right">Eficácia Real</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800/60 text-slate-300">
+              <tr class="hover:bg-slate-800/30">
+                <td class="py-3 px-3 font-semibold text-white">Canhão de Som (Chapecó)</td>
+                <td class="py-3 px-3">625 torres (raio 500m)</td>
+                <td class="py-3 px-3 text-red-400 font-mono">R$ 500 a 600 Mi</td>
+                <td class="py-3 px-3 font-mono">R$ 15 a 20 Mi</td>
+                <td class="py-3 px-3 font-bold font-mono">R$ 700 a 800 Mi</td>
+                <td class="py-3 px-3 text-right font-bold text-red-500">0% (Inútil)</td>
+              </tr>
+              <tr class="hover:bg-slate-800/30">
+                <td class="py-3 px-3 font-semibold text-white">Queimadores de Solo (Fraiburgo)</td>
+                <td class="py-3 px-3">50 geradores (malha 10km)</td>
+                <td class="py-3 px-3 font-mono">R$ 3 a 5 Mi</td>
+                <td class="py-3 px-3 font-mono">R$ 3 a 6 Mi</td>
+                <td class="py-3 px-3 font-bold font-mono">R$ 35 a 65 Mi</td>
+                <td class="py-3 px-3 text-right font-bold text-amber-400">15% a 30%</td>
+              </tr>
+              <tr class="hover:bg-slate-800/30">
+                <td class="py-3 px-3 font-semibold text-white">Foguetes Balísticos (Sérvia)</td>
+                <td class="py-3 px-3">40 lançadores automáticos</td>
+                <td class="py-3 px-3 font-mono">R$ 8 a 12 Mi</td>
+                <td class="py-3 px-3 font-mono">R$ 10 a 18 Mi</td>
+                <td class="py-3 px-3 font-bold font-mono">R$ 110 a 190 Mi</td>
+                <td class="py-3 px-3 text-right font-bold text-amber-400">20% a 40%</td>
+              </tr>
+              <tr class="hover:bg-slate-800/30">
+                <td class="py-3 px-3 font-semibold text-white">Aeronaves Tripuladas (Alberta)</td>
+                <td class="py-3 px-3">2 a 3 aviões dedicados</td>
+                <td class="py-3 px-3 font-mono">R$ 20 a 30 Mi</td>
+                <td class="py-3 px-3 font-mono">R$ 15 a 25 Mi</td>
+                <td class="py-3 px-3 font-bold font-mono">R$ 170 a 280 Mi</td>
+                <td class="py-3 px-3 text-right font-bold text-cyan-400">30% a 50%</td>
+              </tr>
+              <tr class="hover:bg-cyan-950/20 bg-cyan-950/10">
+                <td class="py-3 px-3 font-bold text-cyan-300">Drones Agrícolas Polivalentes</td>
+                <td class="py-3 px-3 text-cyan-200">40 drones adaptados (uso duplo)</td>
+                <td class="py-3 px-3 font-mono text-cyan-300">R$ 12 a 16 Mi</td>
+                <td class="py-3 px-3 font-mono text-cyan-300">R$ 3 a 5 Mi</td>
+                <td class="py-3 px-3 font-bold font-mono text-cyan-400">R$ 45 a 65 Mi</td>
+                <td class="py-3 px-3 text-right font-bold text-cyan-400">40% a 60%</td>
+              </tr>
+              <tr class="hover:bg-slate-800/30">
+                <td class="py-3 px-3 font-semibold text-white">Telas de PEAD (Física Passiva)</td>
+                <td class="py-3 px-3">Cobertura integral de pomares</td>
+                <td class="py-3 px-3 font-mono text-slate-300">R$ 3,5 a 4,5 Bi</td>
+                <td class="py-3 px-3 font-mono text-slate-300">R$ 50 a 80 Mi</td>
+                <td class="py-3 px-3 font-bold font-mono text-slate-200">~R$ 4 a 5 Bi</td>
+                <td class="py-3 px-3 text-right font-bold text-emerald-400">100% (Total)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Drone Technological Frontier -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+          <div class="w-10 h-10 rounded-lg bg-cyan-500/10 text-cyan-400 flex items-center justify-center font-bold text-lg">
+            🔋
+          </div>
+          <h4 class="font-bold text-white text-sm">Baterias de Silício-Carbono</h4>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Densidades energéticas ultrapassando <strong>400 Wh/kg</strong> permitem que drones de 60 kg atinjam taxas de subida verticais (&gt;8 m/s) e operem 45 minutos em temperaturas sub-zero com cargas úteis de flares de nucleação.
+          </p>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+          <div class="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center font-bold text-lg">
+            🚜
+          </div>
+          <h4 class="font-bold text-white text-sm">Uso Duplo / Compartilhado</h4>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Drones de pulverização pesada (como DJI Agras T50/T60 ou XAG) realizam tratos culturais normais na fazenda durante 95% do ano. Sob alerta meteorológico vermelho, recebem pods de semeadura rápida *plug & play*.
+          </p>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-3">
+          <div class="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center font-bold text-lg">
+            📡
+          </div>
+          <h4 class="font-bold text-white text-sm">Enxames Guiados por Radar</h4>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Redes de radares Doppler Dual-Pol transmitem coordenadas em tempo real para o enxame de drones decolar automaticamente e interceptar a frente de rajada (*gust front*) no local exato de alimentação do granizo.
+          </p>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800 py-6 mt-12 text-center text-xs text-slate-500">
+    Relatório Técnico & Infográfico Científico desenvolvido para análise climática e mitigação de granizo. Baseado em literatura peer-reviewed (OMM, Nature, AMS).
+  </footer>
+
+  <!-- Script: Tabs, Canvas Simulator, Interactive Combat Animations -->
+  <script>
+    // Tab Switching Logic
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-cyan-600', 'text-white', 'shadow');
+        btn.classList.add('text-slate-400');
+      });
+      document.getElementById(tabId).classList.remove('hidden');
+      const activeBtn = document.getElementById('btn-' + tabId);
+      activeBtn.classList.remove('text-slate-400');
+      activeBtn.classList.add('bg-cyan-600', 'text-white', 'shadow');
+
+      if(tabId === 'tab-formation') {
+        startCanvasSimulation();
+      }
+      if(tabId === 'tab-combate') {
+        renderCombatAnimation(currentSystem);
+      }
+    }
+
+    // ==================== SIMULATION 1: CANVAS CLOUD ====================
+    let canvas, ctx;
+    let simRunning = true;
+    let animFrameId = null;
+
+    let hailStone = {
+      x: 360,
+      y: 220,
+      radius: 6,
+      vy: 0,
+      state: 'growing', // 'growing', 'falling', 'melted'
+      growthCycles: 0,
+      concentricLayers: 1
+    };
+
+    let updraftSpeed = 35; // m/s
+    const updraftSlider = document.getElementById('updraft-slider');
+    const updraftVal = document.getElementById('updraft-val');
+
+    updraftSlider.addEventListener('input', (e) => {
+      updraftSpeed = parseInt(e.target.value);
+      updraftVal.innerText = updraftSpeed + ' m/s';
+    });
+
+    document.getElementById('btn-toggle-sim').addEventListener('click', () => {
+      simRunning = !simRunning;
+      if (simRunning) loopSim();
+    });
+
+    document.getElementById('btn-reset-hail').addEventListener('click', resetHailStone);
+
+    function resetHailStone() {
+      hailStone.x = 320 + Math.random() * 80;
+      hailStone.y = 260;
+      hailStone.radius = 5;
+      hailStone.vy = -1;
+      hailStone.state = 'growing';
+      hailStone.growthCycles = 0;
+      hailStone.concentricLayers = 1;
+    }
+
+    function startCanvasSimulation() {
+      canvas = document.getElementById('cloud-canvas');
+      ctx = canvas.getContext('2d');
+      resetHailStone();
+      if (!animFrameId) {
+        loopSim();
+      }
+    }
+
+    function loopSim() {
+      if (!simRunning) return;
+      updateHailPhysics();
+      renderCanvas();
+      animFrameId = requestAnimationFrame(loopSim);
+    }
+
+    function updateHailPhysics() {
+      // Freezing level line is at y = 300 (corresponds to ~4000m)
+      // Top of growth zone is at y = 140 (corresponds to ~8000m)
+      
+      const g = 0.25;
+      const weight = (hailStone.radius * hailStone.radius * 0.008);
+      const updraftForce = (updraftSpeed * 0.015);
+
+      if (hailStone.state === 'growing') {
+        // Net vertical acceleration
+        const netForce = weight - updraftForce;
+        hailStone.vy += netForce * 0.05;
+
+        // In growth zone (between y=140 and y=300), hailstone grows
+        if (hailStone.y > 140 && hailStone.y < 300) {
+          hailStone.radius += 0.04;
+          hailStone.growthCycles++;
+          if (hailStone.growthCycles % 40 === 0) {
+            hailStone.concentricLayers++;
+          }
+        }
+
+        // Apply updraft lift
+        hailStone.y += hailStone.vy;
+        hailStone.x += (Math.sin(hailStone.growthCycles * 0.05) * 1.2);
+
+        // If it goes too high (above growth zone), updraft diverges horizontally
+        if (hailStone.y < 130) {
+          hailStone.vy = 0.5;
+          hailStone.y = 135;
+        }
+
+        // If weight significantly overcomes updraft and it sinks below freezing level (y > 320)
+        if (hailStone.y > 310 && weight > updraftForce * 0.85) {
+          hailStone.state = 'falling';
+          hailStone.vy = 2.5;
+        }
+      } else if (hailStone.state === 'falling') {
+        // Terminal fall through warm layer
+        hailStone.y += hailStone.vy;
+        hailStone.vy += 0.1;
+
+        // Melting in warm air below y = 320
+        if (hailStone.y > 320) {
+          hailStone.radius -= 0.02; // partial melting
+        }
+
+        // Ground hit
+        if (hailStone.y >= 490) {
+          hailStone.y = 490;
+          setTimeout(resetHailStone, 1200);
+        }
+      }
+
+      // Update telemetry card
+      const diamCm = (hailStone.radius * 2 * 0.15).toFixed(1);
+      const vtMs = (Math.sqrt(hailStone.radius * 9.8 * 2.8)).toFixed(1);
+      const ekJoules = (0.5 * (Math.pow(hailStone.radius, 3) * 0.001) * Math.pow(vtMs, 2)).toFixed(1);
+
+      document.getElementById('telemetry-status').innerText = hailStone.state === 'growing' ? 'Recirculando no Updraft' : (hailStone.y >= 490 ? 'Impacto no Solo!' : 'Queda Livre');
+      document.getElementById('telemetry-diameter').innerText = diamCm + ' cm';
+      document.getElementById('telemetry-vt').innerText = vtMs + ' m/s (' + (vtMs * 3.6).toFixed(0) + ' km/h)';
+      document.getElementById('telemetry-ek').innerText = ekJoules + ' J';
+    }
+
+    function renderCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // 1. Background Layers
+      // Stratosphere / Anvil zone (y: 0 - 100)
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 0, canvas.width, 110);
+      
+      // Supercooled growth zone (y: 110 - 300)
+      ctx.fillStyle = '#0c1a30';
+      ctx.fillRect(0, 110, canvas.width, 190);
+
+      // Warm Melting layer (y: 300 - 490)
+      ctx.fillStyle = '#1e1b2e';
+      ctx.fillRect(0, 300, canvas.width, 190);
+
+      // Ground (y: 490 - 520)
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(0, 490, canvas.width, 30);
+      ctx.strokeStyle = '#334155';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(0, 490, canvas.width, 1);
+
+      // 2. Altitude & Temperature Annotations
+      ctx.font = '10px Inter, sans-serif';
+      ctx.fillStyle = '#64748b';
+      ctx.fillText('12.000m (-50°C) Topo da Cb', 15, 25);
+      ctx.fillText('8.000m (-25°C) Supercooled SLW', 15, 140);
+      
+      // Freezing Level Line (0°C)
+      ctx.strokeStyle = '#0284c7';
+      ctx.setLineDash([6, 4]);
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(0, 300);
+      ctx.lineTo(canvas.width, 300);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillText('4.000m (Isoterma 0°C) - Nível de Congelamento', 15, 295);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillText('Superfície (Solo)', 15, 510);
+
+      // 3. Draw Updraft Wind Streamlines
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+      ctx.lineWidth = 2;
+      for (let i = 0; i < 5; i++) {
+        let offsetX = 280 + i * 40;
+        ctx.beginPath();
+        ctx.moveTo(offsetX - 20, 480);
+        ctx.bezierCurveTo(offsetX, 340, offsetX - 30, 200, offsetX + 10, 120);
+        ctx.stroke();
+
+        // Little upward arrowheads
+        let arrowY = (Date.now() * 0.15 + i * 60) % 360 + 120;
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.5)';
+        ctx.beginPath();
+        ctx.moveTo(offsetX - 10, arrowY);
+        ctx.lineTo(offsetX - 6, arrowY - 8);
+        ctx.lineTo(offsetX - 2, arrowY);
+        ctx.fill();
+      }
+
+      // 4. Draw Hailstone with Concentric Rings
+      ctx.save();
+      ctx.translate(hailStone.x, hailStone.y);
+
+      // Shadow
+      ctx.beginPath();
+      ctx.arc(0, 0, hailStone.radius + 3, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(14, 165, 233, 0.2)';
+      ctx.fill();
+
+      // Outer ice shell
+      ctx.beginPath();
+      ctx.arc(0, 0, hailStone.radius, 0, Math.PI * 2);
+      ctx.fillStyle = '#f8fafc';
+      ctx.fill();
+      ctx.strokeStyle = '#94a3b8';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      // Concentric growth rings
+      for (let r = hailStone.concentricLayers; r >= 1; r--) {
+        let ringRad = hailStone.radius * (r / (hailStone.concentricLayers + 1));
+        if (ringRad > 1) {
+          ctx.beginPath();
+          ctx.arc(0, 0, ringRad, 0, Math.PI * 2);
+          ctx.strokeStyle = r % 2 === 0 ? 'rgba(148, 163, 184, 0.8)' : 'rgba(255, 255, 255, 0.9)';
+          ctx.stroke();
+        }
+      }
+
+      // Core Graupel
+      ctx.beginPath();
+      ctx.arc(0, 0, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = '#cbd5e1';
+      ctx.fill();
+
+      ctx.restore();
+    }
+
+
+    // ==================== SIMULATION 2: COMBAT SYSTEMS ====================
+    let currentSystem = 'som';
+
+    const systemData = {
+      som: {
+        title: 'Canhões Antigranizo (Ondas Sônicas)',
+        badge: 'Eficácia: 0%',
+        badgeClass: 'bg-red-950 border-red-800 text-red-400',
+        mechanism: 'Detonação de acetileno gerando pulsos de choque sonoro a cada 5 segundos através de cone difusor.',
+        scientific: 'A onda sofre atenuação geométrica (1/r²) e absorção pelo ar. A 100m gera apenas 1,3 hPa (precisaria de 300 hPa para quebrar gelo). A 8.000m na nuvem a pressão é zero. Rejeitado categoricamente pela OMM.',
+        omsm: 'Pseudociência (OMM)',
+        omsmClass: 'text-red-400',
+        cost: '~R$ 900.000 / ponto',
+        svgHtml: `
+          <!-- Sound Cannon Cannon Element -->
+          <g transform="translate(180, 270)">
+            <!-- Cone -->
+            <polygon points="40,50 60,50 80,0 20,0" fill="#475569" stroke="#94a3b8" stroke-width="2"/>
+            <!-- Base chamber -->
+            <rect x="25" y="45" width="50" height="25" rx="4" fill="#1e293b" stroke="#64748b"/>
+            <!-- Detonation burst at cone mouth -->
+            <circle cx="50" cy="0" r="10" fill="#f59e0b" opacity="0.8"/>
+            <circle cx="50" cy="0" r="18" fill="#ef4444" opacity="0.4"/>
+            
+            <!-- Dissipating Sound Waves -->
+            <circle cx="50" cy="-30" class="wave-anim" fill="none" stroke="#f59e0b" stroke-dasharray="3"/>
+            <circle cx="50" cy="-60" class="wave-anim-delay-1" fill="none" stroke="#ef4444" stroke-dasharray="4"/>
+            <circle cx="50" cy="-90" class="wave-anim-delay-2" fill="none" stroke="#94a3b8" stroke-dasharray="5"/>
+          </g>
+
+          <!-- Deflected path in cloud -->
+          <path d="M 230 180 Q 280 160 360 170" fill="none" stroke="#f43f5e" stroke-dasharray="3" stroke-width="1.5" opacity="0.6"/>
+          <text x="370" y="175" fill="#f43f5e" font-size="10">Onda dissipada / Refração por vento</text>
+          
+          <!-- Hail falling intact -->
+          <circle cx="340" cy="200" r="7" fill="#fff" stroke="#94a3b8"/>
+          <circle cx="370" cy="240" r="9" fill="#fff" stroke="#94a3b8"/>
+          <circle cx="350" cy="290" r="8" fill="#fff" stroke="#94a3b8"/>
+          <text x="375" y="270" fill="#f87171" font-size="10" font-weight="bold">Granizo cai intacto</text>
+        `
+      },
+      queimador: {
+        title: 'Queimador Terrestre de Iodeto de Prata (Fraiburgo)',
+        badge: 'Eficácia: 15% a 30%',
+        badgeClass: 'bg-amber-950 border-amber-800 text-amber-400',
+        mechanism: 'Queima de solução de AgI + acetona em chama de propano no solo. A fumaça microscópica depende de correntes ascendentes térmicas para subir à nuvem.',
+        scientific: 'A geometria hexagonal do AgI é análoga ao gelo e nucleia com sucesso em laboratório. Contudo, o transporte a partir do solo depende 100% da sorte do vento e frequentemente sofre desvio ou bloqueio por inversão térmica.',
+        omsm: 'Controverso / Efeito Variável',
+        omsmClass: 'text-amber-400',
+        cost: '~R$ 50.000 / ponto',
+        svgHtml: `
+          <!-- Ground Burner -->
+          <g transform="translate(140, 280)">
+            <rect x="0" y="20" width="30" height="20" fill="#334155" rx="3"/>
+            <circle cx="15" cy="18" r="6" fill="#f97316"/>
+            <!-- Plume drifting with wind -->
+            <g class="plume-anim">
+              <circle cx="20" cy="0" r="8" fill="#cbd5e1" opacity="0.6"/>
+              <circle cx="35" cy="-25" r="14" fill="#94a3b8" opacity="0.4"/>
+              <circle cx="50" cy="-55" r="22" fill="#64748b" opacity="0.3"/>
+            </g>
+          </g>
+
+          <text x="230" y="220" fill="#38bdf8" font-size="10">Pluma de AgI carreada pelo vento</text>
+          <path d="M 230 180 Q 290 140 330 110" fill="none" stroke="#38bdf8" stroke-dasharray="3"/>
+
+          <!-- Cloud competition: smaller hailstones -->
+          <circle cx="340" cy="120" r="3" fill="#fff"/>
+          <circle cx="350" cy="125" r="3" fill="#fff"/>
+          <circle cx="360" cy="118" r="3" fill="#fff"/>
+          <circle cx="370" cy="130" r="4" fill="#fff"/>
+          <text x="350" y="150" fill="#38bdf8" font-size="9">Nucleação competitiva (menor granizo)</text>
+        `
+      },
+      foguete: {
+        title: 'Foguetes Balísticos Antigranizo (Sérvia / Bálcãs)',
+        badge: 'Eficácia: 20% a 40%',
+        badgeClass: 'bg-amber-950 border-amber-800 text-amber-400',
+        mechanism: 'Disparo balístico com propelente sólido levando 400g a 1kg de AgI, explodindo diretamente na zona de super-resfriamento (-5°C a -12°C).',
+        scientific: 'Entrega o reagente no local correto sem depender de vento no solo. Contudo, o ensaio suíço Grossversuch IV não encontrou redução estatística significativa. Alto perigo de queda de estilhaços e fechamento de espaço aéreo.',
+        omsm: 'Moderado (Risco de Estilhaço)',
+        omsmClass: 'text-amber-400',
+        cost: '~US$ 300 / foguete',
+        svgHtml: `
+          <!-- Launch rail -->
+          <g transform="translate(130, 280)">
+            <rect x="10" y="25" width="30" height="15" fill="#1e293b"/>
+            <line x1="20" y1="25" x2="45" y2="0" stroke="#94a3b8" stroke-width="4"/>
+          </g>
+
+          <!-- Rocket Flight Animation -->
+          <g class="rocket-anim" transform="translate(160, 270)">
+            <polygon points="0,0 8,-20 4,-20 4,-30 -4,-30 -4,-20 -8,-20" fill="#f8fafc"/>
+            <polygon points="-3,-15 0,-5 3,-15" fill="#ef4444"/>
+            <!-- Smoke trail -->
+            <line x1="0" y1="0" x2="-20" y2="40" stroke="#94a3b8" stroke-dasharray="3" stroke-width="2"/>
+          </g>
+
+          <!-- Target Explosion in Cloud -->
+          <g transform="translate(260, 90)">
+            <circle cx="0" cy="0" r="18" fill="#f59e0b" opacity="0.6"/>
+            <circle cx="0" cy="0" r="28" fill="#ef4444" opacity="0.3"/>
+            <text x="35" y="5" fill="#fcd34d" font-size="10" font-weight="bold">Detonação de AgI a 5.000m</text>
+          </g>
+        `
+      },
+      aviao: {
+        title: 'Semeadura por Aeronave Tripulada (Canadá / EUA)',
+        badge: 'Eficácia: 30% a 50%',
+        badgeClass: 'bg-cyan-950 border-cyan-800 text-cyan-400',
+        mechanism: 'Aeronaves bimotores voam na base do updraft queimando flares de AgI nas asas ou mergulham no topo da nuvem lançando gelo seco.',
+        scientific: 'Método mais direto e flexível entre as semeaduras ativas. Contudo, voar no entorno de supercélulas impõe risco de morte extremo aos pilotos, e o custo anual é milionário, inviabilizando operações públicas contínuas.',
+        omsm: 'Aceito com Ressalvas de Custo',
+        omsmClass: 'text-cyan-400',
+        cost: 'Milhões US$ / ano',
+        svgHtml: `
+          <!-- Aircraft silhouette -->
+          <g transform="translate(180, 180)">
+            <!-- Fuselage -->
+            <ellipse cx="60" cy="20" rx="35" ry="6" fill="#f8fafc"/>
+            <!-- Wings -->
+            <polygon points="50,20 20,-15 40,-15 70,20" fill="#cbd5e1"/>
+            <polygon points="50,20 20,55 40,55 70,20" fill="#cbd5e1"/>
+            <!-- Wingtip flare burning -->
+            <circle cx="30" cy="-15" r="4" fill="#f97316"/>
+            <line x1="30" y1="-15" x2="0" y2="-15" stroke="#f97316" stroke-dasharray="2" stroke-width="2"/>
+            <circle cx="30" cy="55" r="4" fill="#f97316"/>
+            <line x1="30" y1="55" x2="0" y2="55" stroke="#f97316" stroke-dasharray="2" stroke-width="2"/>
+          </g>
+          <text x="260" y="195" fill="#38bdf8" font-size="10">Injeção direta na base da tempestade</text>
+        `
+      },
+      telas: {
+        title: 'Telas Antigranizo de Polietileno (Proteção Física)',
+        badge: 'Eficácia: 100% (Garantida)',
+        badgeClass: 'bg-emerald-950 border-emerald-800 text-emerald-400',
+        mechanism: 'Redes trançadas de alta densidade (PEAD) suspensas sobre postes e cabos de aço. Intercepta fisicamente a pedra e dissipa a energia de impacto por deformação elástica.',
+        scientific: 'Princípio mecânico comprovado e infalível. Não tenta alterar a atmosfera caótica: protege o patrimônio diretamente. Padrão na Itália, Argentina e fruticultura nobre de SC/RS.',
+        omsm: 'Consenso Absoluto (100%)',
+        omsmClass: 'text-emerald-400',
+        cost: 'R$ 60k a 120k / ha',
+        svgHtml: `
+          <!-- Orchard Trees -->
+          <g transform="translate(180, 275)">
+            <!-- Tree 1 -->
+            <rect x="25" y="25" width="8" height="20" fill="#78350f"/>
+            <circle cx="29" cy="20" r="18" fill="#15803d"/>
+            <!-- Tree 2 -->
+            <rect x="95" y="25" width="8" height="20" fill="#78350f"/>
+            <circle cx="99" cy="20" r="18" fill="#15803d"/>
+            <!-- Tree 3 -->
+            <rect x="165" y="25" width="8" height="20" fill="#78350f"/>
+            <circle cx="169" cy="20" r="18" fill="#15803d"/>
+            
+            <!-- Structure Posts -->
+            <line x1="0" y1="45" x2="0" y2="-10" stroke="#94a3b8" stroke-width="3"/>
+            <line x1="70" y1="45" x2="70" y2="-10" stroke="#94a3b8" stroke-width="3"/>
+            <line x1="140" y1="45" x2="140" y2="-10" stroke="#94a3b8" stroke-width="3"/>
+            <line x1="210" y1="45" x2="210" y2="-10" stroke="#94a3b8" stroke-width="3"/>
+            
+            <!-- PEAD Net Screen Elastic Roof -->
+            <polyline points="-10,-5 35,-20 70,-5 105,-20 140,-5 175,-20 220,-5" fill="none" stroke="#22c55e" stroke-width="3"/>
+            <line x1="-10" y1="-5" x2="220" y2="-5" stroke="#22c55e" stroke-dasharray="2" stroke-width="1"/>
+          </g>
+
+          <!-- Bouncing / Rolling Hailstones on Screen -->
+          <g transform="translate(210, 245)">
+            <circle cx="10" cy="-5" r="7" fill="#fff" stroke="#94a3b8"/>
+            <!-- Bounce vectors -->
+            <path d="M 10 -25 L 10 -8" fill="none" stroke="#f87171" stroke-width="2"/>
+            <circle cx="45" cy="10" r="6" fill="#fff" stroke="#94a3b8"/>
+            <text x="60" y="5" fill="#22c55e" font-size="11" font-weight="bold">Impacto absorvido: 100% Protegido!</text>
+          </g>
+        `
+      },
+      drones: {
+        title: 'Drones Polivalentes (Uso Duplo Agrícola)',
+        badge: 'Eficácia: 40% a 60%',
+        badgeClass: 'bg-cyan-950 border-cyan-800 text-cyan-400',
+        mechanism: 'Drones de pulverização pesada adaptados com pods modulares de flares de AgI/sais. Decolam autonomamente em enxame guiados pelo radar Doppler da Defesa Civil.',
+        scientific: 'Elimina 100% do risco à vida humana de pilotos. Custo por hora de voo 90% menor que aviões. Precisão de injeção milimétrica. Nova fronteira tecnológica com baterias de estado sólido (400 Wh/kg).',
+        omsm: 'Fronteira Tecnológica',
+        omsmClass: 'text-cyan-400',
+        cost: 'Baixo (Compartilhado)',
+        svgHtml: `
+          <!-- Autonomous Drone -->
+          <g transform="translate(220, 160)">
+            <!-- Drone body -->
+            <rect x="30" y="15" width="40" height="15" rx="4" fill="#0ea5e9"/>
+            <!-- Arms and Rotors -->
+            <line x1="10" y1="10" x2="90" y2="35" stroke="#64748b" stroke-width="3"/>
+            <line x1="10" y1="35" x2="90" y2="10" stroke="#64748b" stroke-width="3"/>
+            <!-- Spin rotors -->
+            <ellipse cx="10" cy="10" rx="14" ry="3" fill="#94a3b8" opacity="0.7"/>
+            <ellipse cx="90" cy="35" rx="14" ry="3" fill="#94a3b8" opacity="0.7"/>
+            <ellipse cx="10" cy="35" rx="14" ry="3" fill="#94a3b8" opacity="0.7"/>
+            <ellipse cx="90" cy="10" rx="14" ry="3" fill="#94a3b8" opacity="0.7"/>
+            
+            <!-- Quick-release payload pod -->
+            <rect x="42" y="28" width="16" height="8" fill="#f97316" rx="2"/>
+            <circle cx="50" cy="38" r="3" fill="#f97316"/>
+            <line x1="50" y1="38" x2="50" y2="55" stroke="#f97316" stroke-dasharray="2" stroke-width="2"/>
+          </g>
+
+          <text x="320" y="175" fill="#38bdf8" font-size="10" font-weight="bold">Semeadura autônoma guiada por Radar</text>
+          <text x="320" y="190" fill="#94a3b8" font-size="9">Baterias de 400 Wh/kg | Zero risco à vida</text>
+        `
+      }
+    };
+
+    function selectSystem(sysKey) {
+      currentSystem = sysKey;
+      document.querySelectorAll('.sys-btn').forEach(btn => {
+        btn.classList.remove('border-red-500/50', 'border-cyan-500/50', 'border-emerald-500/50', 'bg-slate-900');
+        btn.classList.add('bg-slate-950', 'border-slate-800');
+      });
+      const activeBtn = document.getElementById('btn-sys-' + sysKey);
+      activeBtn.classList.remove('bg-slate-950', 'border-slate-800');
+      activeBtn.classList.add('bg-slate-900', 'border-cyan-500/50');
+
+      renderCombatAnimation(sysKey);
+    }
+
+    function renderCombatAnimation(sysKey) {
+      const data = systemData[sysKey];
+      document.getElementById('sys-title').innerText = data.title;
+      document.getElementById('sys-badge').innerText = data.badge;
+      document.getElementById('sys-badge').className = 'px-2.5 py-0.5 rounded text-xs font-extrabold border ' + data.badgeClass;
+      document.getElementById('sys-mechanism').innerText = data.mechanism;
+      document.getElementById('sys-scientific').innerHTML = data.scientific;
+      document.getElementById('sys-omsm').innerText = data.omsm;
+      document.getElementById('sys-omsm').className = 'font-bold ' + data.omsmClass;
+      document.getElementById('sys-cost').innerText = data.cost;
+
+      // Inject SVG animation
+      const viewport = document.getElementById('animation-viewport');
+      viewport.innerHTML = `
+        <svg class="w-full h-full" viewBox="0 0 500 350" preserveAspectRatio="none">
+          ${data.svgHtml}
+        </svg>
+      `;
+    }
+
+    // Default initialization
+    document.addEventListener('DOMContentLoaded', () => {
+      renderCombatAnimation('som');
+    });
+  </script>
+
+</body>
+</html>
