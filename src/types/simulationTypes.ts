@@ -1,17 +1,33 @@
+export type SimulationFamily = 'thermodynamic' | 'convective';
+
+export type ScenarioPreset =
+  // NOAA NESDIS Thermodynamic Modes
+  | 'neve'
+  | 'chuva'
+  | 'sleet'
+  | 'chuva_congelante'
+  // Convective Severe Storm Modes
+  | 'tempestade_comum'
+  | 'tempestade_forte'
+  | 'supercelula';
+
 export enum ParticleType {
-  DROP = 0,         // Liquid droplet (T > 0°C)
-  SLW_DROP = 1,     // Supercooled liquid water droplet (T <= 0°C)
-  ICE_CRYSTAL = 2,  // Ice crystal / snowflake
-  GRAUPEL = 3,      // Rime porous ice embryo (2 - 5 mm)
-  HAIL = 4,         // Layered severe hailstone (> 5 mm)
-  RAIN = 5          // Melted raindrop at ground
+  // Thermodynamic NOAA Family
+  SNOW = 0,             // Snowflake / Ice crystal
+  MELTING_SNOW = 1,     // Slushy melting snowflake
+  RAIN = 2,             // Liquid raindrop
+  SUPERCOOLED_DROP = 3, // Liquid droplet below 0°C (Freezing rain)
+  SLEET = 4,            // Re-frozen translucent ice pellet
+  // Convective Storm Family
+  GRAUPEL = 5,          // Convective rime porous embryo
+  HAIL = 6              // Severe layered hailstone
 }
 
 export enum GrowthRegime {
   NONE = 0,
-  DRY = 1,    // Rime growth: fast freezing, opaque white, trapped air bubbles
-  WET = 2,    // Glaze growth: liquid surface film, slow freezing, transparent ice
-  MELTING = 3 // Below 0°C level: liquid ablation and size reduction
+  DRY = 1,     // Rime growth: opaque white, trapped air bubbles
+  WET = 2,     // Glaze growth: clear translucent ice
+  MELTING = 3  // Liquid ablation
 }
 
 export interface LayerRecord {
@@ -25,8 +41,8 @@ export interface LayerRecord {
 export interface SoundingNode {
   zKm: number;
   tempC: number;
-  dewPointC: number;
-  label?: string;
+  dewPointC: number; // Strictly enforced Td <= T
+  label: string;
 }
 
 export interface ParticleTelemetry {
@@ -41,6 +57,7 @@ export interface ParticleTelemetry {
   terminalVelocityMs: number;
   updraftMs: number;
   temperatureC: number;
+  dewPointC: number;
   recirculations: number;
   waterCollectedG: number;
   regime: GrowthRegime;
@@ -51,30 +68,37 @@ export interface ParticleTelemetry {
 }
 
 export interface SimulationParams {
-  wMax: number;             // Maximum updraft speed in m/s (5 to 55)
+  family: SimulationFamily;
+  activeScenario: ScenarioPreset;
+  // Convective storm parameters
+  wMax: number;             // Updraft speed in m/s (5 to 55)
   updraftWidthKm: number;   // Updraft core width in km (0.8 to 4.0)
-  updraftTiltDeg: number;   // Updraft tilt / wind shear effect (0 to 30)
-  zFreezingKm: number;      // Altitude of 0°C isotherm (1.5 to 5.0)
-  lwcMax: number;           // Supercooled Liquid Water Content in g/m³ (0.5 to 5.0)
-  turbulenceIntensity: number; // Simplex noise amplitude (0.0 to 1.0)
-  shearStrength: number;    // Vertical wind shear (m/s per km)
-  warmLayerDepthKm: number; // Depth of warm air below cloud base
-  subCloudHumidity: number; // Relative humidity below 0°C (0.3 to 1.0)
-  numParticles: number;     // Active particles in simulation (20 to 150)
-  timeScale: number;        // Speed multiplier (0.2 to 3.0)
-  randomSeed: number;       // Seed for PRNG reproducibility
+  updraftTiltDeg: number;   // Updraft tilt (0 to 30)
+  zFreezingKm: number;      // 0°C isotherm altitude (calculated or preset)
+  lwcMax: number;           // Supercooled Liquid Water Content in g/m³
+  turbulenceIntensity: number; // Simplex noise amplitude
+  shearStrength: number;    // Vertical wind shear
+  subCloudHumidity: number; // Relative humidity (0.1 to 1.0)
+  numParticles: number;     // Active particles (20 to 120)
+  timeScale: number;        // Speed multiplier (0.5 to 3.0)
+  randomSeed: number;       // PRNG seed
   currentStage: number;     // 1 to 4
-  soundingNodes: SoundingNode[]; // Interactive NOAA thermodynamic profile
+  // Exactly 4 NOAA Sounding Levels
+  soundingNodes: SoundingNode[];
 }
 
 export interface GroundHydrometeorStats {
+  // Thermodynamic stats
+  snowCount: number;
   rainCount: number;
+  sleetCount: number;
+  freezingRainCount: number;
+  glazeIceThicknessMm: number; // Ice accretion from freezing rain
+  // Convective hail stats
   graupelCount: number;
-  smallHailCount: number;   // < 5 mm
-  mediumHailCount: number;  // 5 to 20 mm
-  largeHailCount: number;   // 20 to 50 mm
+  smallHailCount: number;   // < 15 mm
+  mediumHailCount: number;  // 15 to 30 mm
+  largeHailCount: number;   // 30 to 50 mm
   giantHailCount: number;   // > 50 mm
   totalGrounded: number;
 }
-
-export type ScenarioPreset = 'comum' | 'forte' | 'supercelula' | 'derretimento_intenso' | 'neve_inverno' | 'inversao_sleet';

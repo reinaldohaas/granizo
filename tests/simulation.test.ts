@@ -10,16 +10,70 @@ import { GrowthRegime } from '../src/types/simulationTypes';
 describe('Atmospheric Profile and Sounding', () => {
   const atmos = new AtmosphericProfile();
 
-  it('verifies temperature decreases with altitude', () => {
-    const t0 = atmos.getTemperature(0, 3.0);
-    const t3 = atmos.getTemperature(3, 3.0);
-    const t6 = atmos.getTemperature(6, 3.0);
-    const t12 = atmos.getTemperature(12, 3.0);
+  it('verifies temperature decreases with altitude in standard troposphere', () => {
+    const t0 = atmos.getTemperature(0);
+    const t3 = atmos.getTemperature(3);
+    const t6 = atmos.getTemperature(6);
+    const t12 = atmos.getTemperature(12);
 
-    expect(t0).toBe(20.0);
-    expect(t3).toBeCloseTo(0.0, 1);
+    expect(t0).toBe(18.0);
+    expect(t3).toBeLessThan(t0);
     expect(t6).toBeLessThan(t3);
-    expect(t12).toBeCloseTo(-60.0, 1);
+    expect(t12).toBeLessThan(t6);
+  });
+
+  it('strictly enforces physical constraint Td <= T across all altitudes', () => {
+    // Attempt invalid nodes where Td > T
+    const invalidNodes = [
+      { zKm: 0.0, tempC: 10.0, dewPointC: 25.0, label: 'L1' },
+      { zKm: 2.0, tempC: 5.0, dewPointC: 10.0, label: 'L2' },
+      { zKm: 5.0, tempC: -5.0, dewPointC: 0.0, label: 'L3' },
+      { zKm: 10.0, tempC: -40.0, dewPointC: -30.0, label: 'L4' }
+    ];
+    const safeAtmos = new AtmosphericProfile();
+    for (let z = 0; z <= 12; z += 0.5) {
+      const t = safeAtmos.getTemperature(z, 3.0, invalidNodes);
+      const td = safeAtmos.getDewPoint(z, invalidNodes);
+      expect(td).toBeLessThanOrEqual(t);
+    }
+  });
+
+  it('classifies precipitation according to NOAA NESDIS rules', () => {
+    // 1. Snow (entire column subfreezing)
+    const snowNodes = [
+      { zKm: 0.0, tempC: -3.0, dewPointC: -4.0, label: 'L1' },
+      { zKm: 2.0, tempC: -7.0, dewPointC: -8.0, label: 'L2' },
+      { zKm: 5.0, tempC: -18.0, dewPointC: -20.0, label: 'L3' },
+      { zKm: 9.0, tempC: -35.0, dewPointC: -40.0, label: 'L4' }
+    ];
+    expect(AtmosphericProfile.classifyPrecipitation(snowNodes).type).toBe('neve');
+
+    // 2. Sleet (warm aloft, deep cold layer >= 1.2km)
+    const sleetNodes = [
+      { zKm: 0.0, tempC: -4.0, dewPointC: -5.0, label: 'L1' },
+      { zKm: 1.8, tempC: -5.0, dewPointC: -6.0, label: 'L2' },
+      { zKm: 4.5, tempC: 5.0, dewPointC: 3.0, label: 'L3' },
+      { zKm: 9.0, tempC: -28.0, dewPointC: -32.0, label: 'L4' }
+    ];
+    expect(AtmosphericProfile.classifyPrecipitation(sleetNodes).type).toBe('sleet');
+
+    // 3. Freezing Rain (warm aloft, shallow cold layer < 1.0km)
+    const freezingRainNodes = [
+      { zKm: 0.0, tempC: -2.0, dewPointC: -3.0, label: 'L1' },
+      { zKm: 0.8, tempC: -1.0, dewPointC: -2.0, label: 'L2' },
+      { zKm: 4.0, tempC: 7.0, dewPointC: 5.0, label: 'L3' },
+      { zKm: 9.0, tempC: -25.0, dewPointC: -30.0, label: 'L4' }
+    ];
+    expect(AtmosphericProfile.classifyPrecipitation(freezingRainNodes).type).toBe('chuva_congelante');
+
+    // 4. Rain (surface warm)
+    const rainNodes = [
+      { zKm: 0.0, tempC: 16.0, dewPointC: 13.0, label: 'L1' },
+      { zKm: 2.5, tempC: 6.0, dewPointC: 4.0, label: 'L2' },
+      { zKm: 5.0, tempC: -10.0, dewPointC: -12.0, label: 'L3' },
+      { zKm: 9.0, tempC: -32.0, dewPointC: -35.0, label: 'L4' }
+    ];
+    expect(AtmosphericProfile.classifyPrecipitation(rainNodes).type).toBe('chuva');
   });
 
   it('verifies air density decreases exponentially with height', () => {

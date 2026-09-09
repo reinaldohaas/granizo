@@ -1,27 +1,30 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { useSimulationStore } from '../store/simulationStore';
-import { SoundingNode } from '../types/simulationTypes';
-import { Thermometer, Droplets, Info } from 'lucide-react';
+import { AtmosphericProfile } from '../simulation/AtmosphericProfile';
+import { Thermometer, Droplets, Info, Layers } from 'lucide-react';
 
 export const AtmosphericSounding: React.FC = () => {
   const soundingNodes = useSimulationStore((state) => state.params.soundingNodes);
   const setSoundingNode = useSimulationStore((state) => state.setSoundingNode);
-  const wMax = useSimulationStore((state) => state.params.wMax);
-  const zFreezingKm = useSimulationStore((state) => state.params.zFreezingKm);
+  const family = useSimulationStore((state) => state.params.family);
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [activeDrag, setActiveDrag] = useState<{ index: number; isDewPoint: boolean } | null>(null);
 
-  // Coordinate mapping:
-  // Temperature: -65°C to +35°C mapped to width [40, width - 20]
-  // Altitude: 0 to 14 km mapped to height [height - 30, 20]
+  const atmos = new AtmosphericProfile();
+  const diagnosis = atmos.classifyPrecipitation(soundingNodes);
+
+  // Coordinate mapping for sounding canvas:
+  // Temperature domain: -70°C to +35°C
+  // Altitude domain: 0 to 14 km
   const WIDTH = 340;
   const HEIGHT = 260;
 
-  const tToX = (t: number) => 40 + ((t + 65.0) / 100.0) * (WIDTH - 60);
-  const xToT = (x: number) => -65.0 + ((x - 40) / (WIDTH - 60)) * 100.0;
+  const tToX = (t: number) => 40 + ((t + 70.0) / 105.0) * (WIDTH - 60);
+  const xToT = (x: number) => -70.0 + ((x - 40) / (WIDTH - 60)) * 105.0;
 
-  const zToY = (z: number) => (HEIGHT - 30) - (z / 14.0) * (HEIGHT - 50);
+  const zToY = (z: number) => (HEIGHT - 32) - (z / 14.0) * (HEIGHT - 54);
+  const yToZ = (y: number) => Math.max(0, Math.min(14, ((HEIGHT - 32 - y) / (HEIGHT - 54)) * 14.0));
 
   // Draw sounding diagram
   useEffect(() => {
@@ -32,12 +35,12 @@ export const AtmosphericSounding: React.FC = () => {
 
     ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
-    // 1. Grid & Axes
+    // 1. Grid Lines
     ctx.strokeStyle = '#1e293b';
     ctx.lineWidth = 1;
 
-    // Altitude horizontal grid lines (0, 3, 6, 9, 12 km)
-    for (let z = 0; z <= 14; z += 3) {
+    // Horizontal altitude lines (0, 3, 6, 9, 12 km)
+    for (let z = 0; z <= 12; z += 3) {
       const y = zToY(z);
       ctx.beginPath();
       ctx.moveTo(40, y);
@@ -46,40 +49,40 @@ export const AtmosphericSounding: React.FC = () => {
 
       ctx.fillStyle = '#64748b';
       ctx.font = '9px JetBrains Mono, monospace';
-      ctx.fillText(`${z} km`, 5, y + 3);
+      ctx.fillText(`${z}km`, 8, y + 3);
     }
 
-    // Temperature vertical grid lines (-60, -40, -20, 0, +20 °C)
+    // Vertical temperature lines (-60, -40, -20, 0, +20 °C)
     for (let t = -60; t <= 30; t += 20) {
       const x = tToX(t);
       ctx.beginPath();
       ctx.moveTo(x, 20);
-      ctx.lineTo(x, HEIGHT - 30);
+      ctx.lineTo(x, HEIGHT - 32);
       ctx.stroke();
 
       ctx.fillStyle = t === 0 ? '#0ea5e9' : '#64748b';
       ctx.font = t === 0 ? 'bold 9px JetBrains Mono, monospace' : '9px JetBrains Mono, monospace';
-      ctx.fillText(`${t}°`, x - 8, HEIGHT - 16);
+      ctx.fillText(`${t}°`, x - 8, HEIGHT - 18);
     }
 
-    // Freezing reference line (0°C)
+    // 2. 0°C Vertical Reference Line (Linha de Congelamento)
     const x0 = tToX(0);
     ctx.strokeStyle = '#0ea5e9';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([4, 4]);
+    ctx.lineWidth = 1.8;
+    ctx.setLineDash([5, 4]);
     ctx.beginPath();
     ctx.moveTo(x0, 20);
-    ctx.lineTo(x0, HEIGHT - 30);
+    ctx.lineTo(x0, HEIGHT - 32);
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // 2. Warm Layer tint (where T > 0°C)
+    // Shaded warm melting zone (T > 0°C)
     ctx.fillStyle = 'rgba(239, 68, 68, 0.08)';
-    ctx.fillRect(x0, zToY(zFreezingKm), WIDTH - 20 - x0, zToY(0) - zToY(zFreezingKm));
+    ctx.fillRect(x0, 20, WIDTH - 20 - x0, HEIGHT - 52);
 
     // 3. Draw Dew Point Curve (Linha Amarela NOAA)
     ctx.strokeStyle = '#eab308';
-    ctx.lineWidth = 2.0;
+    ctx.lineWidth = 2.2;
     ctx.beginPath();
     soundingNodes.forEach((node, idx) => {
       const x = tToX(node.dewPointC);
@@ -89,125 +92,146 @@ export const AtmosphericSounding: React.FC = () => {
     });
     ctx.stroke();
 
-    // Dew Point interactive handles
-    soundingNodes.forEach((node) => {
-      const x = tToX(node.dewPointC);
+    // 4. Draw Air Temperature Curve (Linha Verde NOAA)
+    ctx.strokeStyle = '#22c55e';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    soundingNodes.forEach((node, idx) => {
+      const x = tToX(node.tempC);
       const y = zToY(node.zKm);
+      if (idx === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+
+    // 5. Draggable Handles for 4 Levels
+    soundingNodes.forEach((node, idx) => {
+      const y = zToY(node.zKm);
+
+      // Yellow handle (Td)
+      const xTd = tToX(node.dewPointC);
       ctx.beginPath();
-      ctx.arc(x, y, 4.5, 0, Math.PI * 2);
+      ctx.arc(xTd, y, 5.0, 0, Math.PI * 2);
       ctx.fillStyle = '#eab308';
       ctx.fill();
       ctx.strokeStyle = '#713f12';
       ctx.lineWidth = 1.5;
       ctx.stroke();
-    });
 
-    // 4. Draw Air Temperature Curve (Linha Verde NOAA)
-    ctx.strokeStyle = '#22c55e';
-    ctx.lineWidth = 2.4;
-    ctx.beginPath();
-    soundingNodes.forEach((node, idx) => {
-      const x = tToX(node.tempC);
-      const y = zToY(node.zKm);
-      if (idx === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    });
-    ctx.stroke();
-
-    // Temperature interactive handles
-    soundingNodes.forEach((node) => {
-      const x = tToX(node.tempC);
-      const y = zToY(node.zKm);
+      // Green handle (T)
+      const xT = tToX(node.tempC);
       ctx.beginPath();
-      ctx.arc(x, y, 5, 0, Math.PI * 2);
+      ctx.arc(xT, y, 5.5, 0, Math.PI * 2);
       ctx.fillStyle = '#22c55e';
       ctx.fill();
       ctx.strokeStyle = '#14532d';
       ctx.lineWidth = 1.5;
       ctx.stroke();
-    });
-  }, [soundingNodes, zFreezingKm]);
 
-  // Drag interaction
+      // Level altitude tag
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = 'bold 9px JetBrains Mono, monospace';
+      ctx.fillText(`L${idx + 1}`, WIDTH - 18, y + 3);
+    });
+  }, [soundingNodes]);
+
+  // Mouse drag handlers on canvas
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
+    const mx = ((e.clientX - rect.left) / rect.width) * WIDTH;
+    const my = ((e.clientY - rect.top) / rect.height) * HEIGHT;
 
-    for (let i = 0; i < soundingNodes.length; i++) {
-      const node = soundingNodes[i];
-      const yPx = zToY(node.zKm);
-      const xTemp = tToX(node.tempC);
-      const xDew = tToX(node.dewPointC);
+    let bestDist = 18.0;
+    let target: { index: number; isDewPoint: boolean } | null = null;
 
-      // Check click on temperature handle
-      if (Math.hypot(clickX - xTemp, clickY - yPx) < 10) {
-        setActiveDrag({ index: i, isDewPoint: false });
-        return;
+    soundingNodes.forEach((node, idx) => {
+      const y = zToY(node.zKm);
+      const xT = tToX(node.tempC);
+      const xTd = tToX(node.dewPointC);
+
+      const distT = Math.hypot(mx - xT, my - y);
+      const distTd = Math.hypot(mx - xTd, my - y);
+
+      if (distT < bestDist) {
+        bestDist = distT;
+        target = { index: idx, isDewPoint: false };
       }
-      // Check click on dew point handle
-      if (Math.hypot(clickX - xDew, clickY - yPx) < 10) {
-        setActiveDrag({ index: i, isDewPoint: true });
-        return;
+      if (distTd < bestDist) {
+        bestDist = distTd;
+        target = { index: idx, isDewPoint: true };
       }
+    });
+
+    if (target) {
+      setActiveDrag(target);
     }
   };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!activeDrag || !canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
-    const mouseX = Math.max(40, Math.min(WIDTH - 20, e.clientX - rect.left));
-    const newT = Math.round(xToT(mouseX) * 10) / 10;
+    const mx = ((e.clientX - rect.left) / rect.width) * WIDTH;
+    const my = ((e.clientY - rect.top) / rect.height) * HEIGHT;
 
+    const newTemp = Math.round(Math.max(-70, Math.min(35, xToT(mx))));
     const node = soundingNodes[activeDrag.index];
-    if (activeDrag.isDewPoint) {
-      setSoundingNode(activeDrag.index, node.tempC, newT);
-    } else {
-      setSoundingNode(activeDrag.index, newT, Math.min(newT, node.dewPointC));
+
+    // Optional altitude drag for mid levels
+    let newZ = node.zKm;
+    if (activeDrag.index === 1 || activeDrag.index === 2) {
+      newZ = Math.round(yToZ(my) * 10) / 10;
     }
+
+    if (activeDrag.isDewPoint) {
+      // Dragging Dew Point: strictly clamp Td <= T
+      const validTd = Math.min(node.tempC, newTemp);
+      setSoundingNode(activeDrag.index, node.tempC, validTd, newZ);
+    } else {
+      // Dragging Air Temp: if T falls below Td, push Td down
+      const validTd = Math.min(newTemp, node.dewPointC);
+      setSoundingNode(activeDrag.index, newTemp, validTd, newZ);
+    }
+  }, [activeDrag, soundingNodes, setSoundingNode]);
+
+  const handleMouseUp = () => {
+    setActiveDrag(null);
   };
 
-  const handleMouseUp = () => setActiveDrag(null);
-
-  // Determine dominant NOAA Precipitation Type at ground
-  const surfTemp = soundingNodes[0].tempC;
-  const isAllFreezing = soundingNodes.every((n) => n.tempC <= 0);
-  let noaaPrecipType = 'Chuva (Rain)';
-  let noaaColor = 'text-blue-400 bg-blue-950 border-blue-800';
-  let noaaDesc = 'A camada quente acima de 0°C derrete todo o gelo antes de atingir o solo.';
-
-  if (isAllFreezing) {
-    noaaPrecipType = 'Neve (Snow)';
-    noaaColor = 'text-cyan-200 bg-cyan-950 border-cyan-800';
-    noaaDesc = 'Toda a coluna atmosférica está abaixo de 0°C; cristais chegam ao solo como flocos de neve.';
-  } else if (surfTemp < 0 && soundingNodes.some((n) => n.tempC > 0)) {
-    noaaPrecipType = 'Chuva Congelante / Sleet';
-    noaaColor = 'text-purple-300 bg-purple-950 border-purple-800';
-    noaaDesc = 'Camada quente em altitude derrete as pedras, que recongelam na camada fria próxima ao solo.';
-  } else if (wMax >= 25 && zFreezingKm <= 3.6) {
-    noaaPrecipType = 'Granizo Severo (Hail)';
-    noaaColor = 'text-amber-400 bg-amber-950 border-amber-800';
-    noaaDesc = 'Corrente ascendente vigorosa suspende granizo volumoso que sobrevive à travessia da camada quente.';
-  }
-
   return (
-    <div className="bg-slate-900/95 border border-slate-800 rounded-2xl p-4 shadow-xl space-y-3">
-      
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-800 pb-2 text-xs">
-        <div className="flex items-center gap-1.5">
-          <span className="text-base">📈</span>
-          <h3 className="font-bold text-white uppercase tracking-wider text-xs">
-            Perfil Termodinâmico (Estilo NOAA NESDIS)
+    <div className="bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-2xl p-3.5 shadow-xl space-y-3 text-xs">
+      {/* Header with NOAA Precipitation Diagnosis Badge */}
+      <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+        <div>
+          <h3 className="font-bold text-white flex items-center gap-1.5 text-xs">
+            <Layers className="w-3.5 h-3.5 text-cyan-400" /> Perfil Termodinâmico (4 Níveis NOAA)
           </h3>
+          <p className="text-[10px] text-slate-400 mt-0.5">
+            <span className="text-emerald-400 font-semibold">Verde: T</span> •{' '}
+            <span className="text-yellow-400 font-semibold">Amarelo: Td (Td ≤ T)</span> •{' '}
+            <span className="text-cyan-400 font-semibold">Tracejado: 0°C</span>
+          </p>
         </div>
-        <span className="text-[10px] text-slate-400 font-mono">Arraste os nós</span>
+
+        {/* NOAA Ground Diagnosis Badge */}
+        <div className="text-right">
+          <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border shadow-sm ${
+            diagnosis.type === 'neve'
+              ? 'bg-blue-950 border-blue-600 text-blue-300'
+              : diagnosis.type === 'chuva'
+              ? 'bg-cyan-950 border-cyan-600 text-cyan-300'
+              : diagnosis.type === 'sleet'
+              ? 'bg-indigo-950 border-indigo-500 text-indigo-300'
+              : 'bg-amber-950 border-amber-600 text-amber-300'
+          }`}>
+            {diagnosis.name}
+          </span>
+        </div>
       </div>
 
-      {/* NOAA Style Draggable Sounding Canvas */}
-      <div className="bg-slate-950 border border-slate-800 rounded-xl p-2 relative flex flex-col items-center">
+      {/* Interactive Sounding Canvas */}
+      <div className="relative rounded-xl overflow-hidden border border-slate-800 bg-slate-950">
         <canvas
           ref={canvasRef}
           width={WIDTH}
@@ -216,46 +240,95 @@ export const AtmosphericSounding: React.FC = () => {
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
-          className="cursor-ew-resize select-none"
+          className="w-full h-auto block cursor-crosshair select-none"
         />
-
-        {/* Legend for lines */}
-        <div className="flex items-center justify-center gap-4 text-[11px] pt-1">
-          <div className="flex items-center gap-1.5">
-            <span className="w-3 h-1 bg-green-500 rounded inline-block"></span>
-            <span className="text-green-400 font-semibold flex items-center gap-1">
-              <Thermometer className="w-3 h-3" /> Temperatura (T)
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="w-3 h-1 bg-yellow-500 rounded inline-block"></span>
-            <span className="text-yellow-400 font-semibold flex items-center gap-1">
-              <Droplets className="w-3 h-3" /> Ponto de Orvalho (T<sub>d</sub>)
-            </span>
-          </div>
+        <div className="absolute bottom-1 right-2 text-[9px] text-slate-500 pointer-events-none font-mono">
+          Arraste os pontos T / Td
         </div>
       </div>
 
-      {/* Real-time NOAA Precipitation Type Diagnostic */}
-      <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-1.5 text-xs">
-        <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider block">
-          Precipitação na Superfície (Classificação NOAA):
-        </span>
-        
-        <div className="flex items-center justify-between">
-          <span className={`px-2.5 py-1 rounded-lg font-bold border text-xs ${noaaColor}`}>
-            {noaaPrecipType}
-          </span>
-          <span className="font-mono text-slate-400 text-[11px]">
-            Nível 0°C: <strong className="text-cyan-400">{zFreezingKm.toFixed(1)} km</strong>
-          </span>
-        </div>
-
-        <p className="text-[11px] text-slate-400 leading-relaxed pt-1">
-          {noaaDesc}
-        </p>
+      {/* NOAA Didactic Diagnosis Explanation */}
+      <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800/80 text-[11px] leading-relaxed text-slate-300">
+        <strong className="text-white flex items-center gap-1 mb-1">
+          <Info className="w-3 h-3 text-cyan-400" /> Diagnóstico da Precipitação:
+        </strong>
+        <p className="text-slate-400">{diagnosis.description}</p>
       </div>
 
+      {/* 4 Interactive Level Sliders & Numerical Readouts */}
+      <div className="space-y-2 pt-1 border-t border-slate-800">
+        <div className="flex justify-between items-center text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+          <span>Ajuste Numérico dos 4 Níveis</span>
+          <span className="text-slate-500 font-normal">Td ≤ T garantido</span>
+        </div>
+
+        {soundingNodes.map((node, idx) => {
+          const depression = Math.max(0, node.tempC - node.dewPointC);
+          const isMoist = depression <= 3.0;
+
+          return (
+            <div key={idx} className="p-2 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-1.5">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="font-semibold text-slate-200">
+                  Nível {idx + 1}: <strong className="text-cyan-300">{node.zKm.toFixed(1)} km</strong>
+                </span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono ${
+                  isMoist ? 'bg-cyan-950 text-cyan-300 border border-cyan-800' : 'bg-slate-800 text-slate-400'
+                }`}>
+                  {isMoist ? '☁️ Saturado (Nuvem)' : '☀️ Camada Seca'}
+                </span>
+                <div className="flex gap-2 font-mono text-[11px]">
+                  <span className="text-emerald-400 font-bold">T: {node.tempC.toFixed(0)}°C</span>
+                  <span className="text-yellow-400 font-bold">Td: {node.dewPointC.toFixed(0)}°C</span>
+                </div>
+              </div>
+
+              {/* Slider for T */}
+              <div className="grid grid-cols-2 gap-2 text-[10px]">
+                <div>
+                  <div className="flex justify-between text-slate-400 mb-0.5">
+                    <span>Temp. Ar (T):</span>
+                    <strong className="text-emerald-400">{node.tempC.toFixed(0)}°C</strong>
+                  </div>
+                  <input
+                    type="range"
+                    min="-60"
+                    max="35"
+                    step="1"
+                    value={node.tempC}
+                    onChange={(e) => {
+                      const newT = parseFloat(e.target.value);
+                      const validTd = Math.min(newT, node.dewPointC);
+                      setSoundingNode(idx, newT, validTd);
+                    }}
+                    className="w-full h-1 bg-slate-800 rounded accent-emerald-500 cursor-pointer"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-slate-400 mb-0.5">
+                    <span>Pto. Orvalho (Td):</span>
+                    <strong className="text-yellow-400">{node.dewPointC.toFixed(0)}°C</strong>
+                  </div>
+                  <input
+                    type="range"
+                    min="-65"
+                    max={node.tempC}
+                    step="1"
+                    value={node.dewPointC}
+                    onChange={(e) => {
+                      const newTd = parseFloat(e.target.value);
+                      const validTd = Math.min(node.tempC, newTd);
+                      setSoundingNode(idx, node.tempC, validTd);
+                    }}
+                    className="w-full h-1 bg-slate-800 rounded accent-yellow-500 cursor-pointer"
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };

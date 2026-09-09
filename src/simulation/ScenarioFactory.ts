@@ -1,139 +1,144 @@
-import { SimulationParams, ScenarioPreset } from '../types/simulationTypes';
+import { SimulationParams, ScenarioPreset, SoundingNode } from '../types/simulationTypes';
 import { AtmosphericProfile } from './AtmosphericProfile';
 
 export class ScenarioFactory {
-  public static createDefaultParams(): SimulationParams {
-    return {
-      wMax: 38.0,
-      updraftWidthKm: 2.2,
-      updraftTiltDeg: 12.0,
-      zFreezingKm: 3.0,
-      lwcMax: 3.2,
-      turbulenceIntensity: 0.45,
-      shearStrength: 2.2,
-      warmLayerDepthKm: 3.0,
-      subCloudHumidity: 0.8,
-      numParticles: 35,
-      timeScale: 1.0,
-      randomSeed: 1337,
-      currentStage: 4,
-      soundingNodes: [...AtmosphericProfile.defaultSoundingNodes]
-    };
-  }
-
-  public static getScenario(preset: ScenarioPreset): Partial<SimulationParams> {
+  /**
+   * Exactly 4 NOAA levels for each preset scenario
+   */
+  public static getSoundingForScenario(preset: ScenarioPreset): SoundingNode[] {
     switch (preset) {
-      case 'comum':
-        return {
-          wMax: 12.0,
-          updraftWidthKm: 1.4,
-          updraftTiltDeg: 3.0,
-          zFreezingKm: 3.2,
-          lwcMax: 1.4,
-          shearStrength: 0.8,
-          currentStage: 2,
-          numParticles: 25,
-          soundingNodes: [
-            { zKm: 0.0, tempC: 22.0, dewPointC: 18.0, label: 'Superfície' },
-            { zKm: 1.5, tempC: 12.0, dewPointC: 11.0, label: 'Base' },
-            { zKm: 3.2, tempC: 0.0, dewPointC: -2.0, label: '0°C' },
-            { zKm: 6.0, tempC: -18.0, dewPointC: -22.0, label: '-18°C' },
-            { zKm: 9.0, tempC: -38.0, dewPointC: -42.0, label: '-38°C' },
-            { zKm: 12.0, tempC: -58.0, dewPointC: -64.0, label: 'Topo' }
-          ]
-        };
+      case 'neve':
+        return [
+          { zKm: 0.0, tempC: -3.0, dewPointC: -4.5, label: 'Nível 1 - Superfície (0 km)' },
+          { zKm: 2.0, tempC: -7.0, dewPointC: -8.0, label: 'Nível 2 - Baixa Troposfera (2.0 km)' },
+          { zKm: 5.5, tempC: -19.0, dewPointC: -21.0, label: 'Nível 3 - Média Troposfera (5.5 km)' },
+          { zKm: 9.0, tempC: -38.0, dewPointC: -41.0, label: 'Nível 4 - Alta Troposfera (9.0 km)' }
+        ];
 
-      case 'forte':
-        return {
-          wMax: 28.0,
-          updraftWidthKm: 2.0,
-          updraftTiltDeg: 8.0,
-          zFreezingKm: 2.8,
-          lwcMax: 2.6,
-          shearStrength: 1.6,
-          currentStage: 3,
-          numParticles: 32,
-          soundingNodes: [
-            { zKm: 0.0, tempC: 24.0, dewPointC: 19.0, label: 'Superfície' },
-            { zKm: 1.5, tempC: 11.0, dewPointC: 10.0, label: 'Base' },
-            { zKm: 2.8, tempC: 0.0, dewPointC: -1.0, label: '0°C' },
-            { zKm: 5.5, tempC: -19.0, dewPointC: -21.0, label: '-19°C' },
-            { zKm: 8.5, tempC: -40.0, dewPointC: -45.0, label: '-40°C' },
-            { zKm: 12.0, tempC: -62.0, dewPointC: -68.0, label: 'Topo' }
-          ]
-        };
+      case 'chuva':
+        return [
+          { zKm: 0.0, tempC: 15.0, dewPointC: 13.0, label: 'Nível 1 - Superfície (0 km)' },
+          { zKm: 2.5, tempC: 6.0, dewPointC: 4.5, label: 'Nível 2 - Baixa Troposfera (2.5 km)' },
+          { zKm: 5.0, tempC: -10.0, dewPointC: -12.0, label: 'Nível 3 - Média Troposfera (5.0 km)' },
+          { zKm: 9.0, tempC: -32.0, dewPointC: -35.0, label: 'Nível 4 - Alta Troposfera (9.0 km)' }
+        ];
+
+      case 'sleet':
+        // Warm nose aloft (+4°C at 4.5 km), then DEEP cold layer (1.8 km) below freezing
+        return [
+          { zKm: 0.0, tempC: -4.0, dewPointC: -5.5, label: 'Nível 1 - Superfície Fria (0 km)' },
+          { zKm: 1.8, tempC: -5.0, dewPointC: -6.5, label: 'Nível 2 - Camada Fria Profunda (1.8 km)' },
+          { zKm: 4.5, tempC: 5.0, dewPointC: 3.5, label: 'Nível 3 - Camada Quente de Fusão (4.5 km)' },
+          { zKm: 9.0, tempC: -28.0, dewPointC: -31.0, label: 'Nível 4 - Topo da Nuvem (9.0 km)' }
+        ];
+
+      case 'chuva_congelante':
+        // Deep warm layer aloft (+6°C at 4 km), then SHALLOW cold layer (< 0.9 km)
+        return [
+          { zKm: 0.0, tempC: -2.5, dewPointC: -3.5, label: 'Nível 1 - Superfície Subzero (0 km)' },
+          { zKm: 0.8, tempC: -1.0, dewPointC: -2.0, label: 'Nível 2 - Camada Fria Rasa (0.8 km)' },
+          { zKm: 4.0, tempC: 7.0, dewPointC: 5.5, label: 'Nível 3 - Camada Quente Profunda (4.0 km)' },
+          { zKm: 9.0, tempC: -26.0, dewPointC: -29.0, label: 'Nível 4 - Topo da Nuvem (9.0 km)' }
+        ];
+
+      case 'tempestade_comum':
+        return [
+          { zKm: 0.0, tempC: 22.0, dewPointC: 18.0, label: 'Nível 1 - Superfície (0 km)' },
+          { zKm: 2.0, tempC: 9.0, dewPointC: 7.5, label: 'Nível 2 - Base Convectiva (2.0 km)' },
+          { zKm: 5.5, tempC: -14.0, dewPointC: -16.5, label: 'Nível 3 - Núcleo Térmico (5.5 km)' },
+          { zKm: 10.0, tempC: -45.0, dewPointC: -50.0, label: 'Nível 4 - Topo da Nuvem (10.0 km)' }
+        ];
+
+      case 'tempestade_forte':
+        return [
+          { zKm: 0.0, tempC: 25.0, dewPointC: 20.0, label: 'Nível 1 - Superfície Quente (0 km)' },
+          { zKm: 2.2, tempC: 11.0, dewPointC: 9.5, label: 'Nível 2 - Nível LCL (2.2 km)' },
+          { zKm: 6.0, tempC: -18.0, dewPointC: -21.0, label: 'Nível 3 - Zona de Granizo (6.0 km)' },
+          { zKm: 11.5, tempC: -55.0, dewPointC: -62.0, label: 'Nível 4 - Topo Bigorna (11.5 km)' }
+        ];
 
       case 'supercelula':
-        return {
-          wMax: 48.0,
-          updraftWidthKm: 2.8,
-          updraftTiltDeg: 18.0,
-          zFreezingKm: 3.0,
-          lwcMax: 4.2,
-          shearStrength: 3.2,
-          currentStage: 4,
-          numParticles: 45,
-          soundingNodes: [...AtmosphericProfile.defaultSoundingNodes]
-        };
+      default:
+        return [
+          { zKm: 0.0, tempC: 28.0, dewPointC: 23.0, label: 'Nível 1 - Superfície Úmida (0 km)' },
+          { zKm: 2.5, tempC: 13.0, dewPointC: 11.0, label: 'Nível 2 - Influxo Severo (2.5 km)' },
+          { zKm: 6.5, tempC: -20.0, dewPointC: -24.0, label: 'Nível 3 - Zona Super-resfriada (6.5 km)' },
+          { zKm: 12.5, tempC: -65.0, dewPointC: -72.0, label: 'Nível 4 - Overshooting Top (12.5 km)' }
+        ];
+    }
+  }
 
-      case 'derretimento_intenso':
-        return {
-          wMax: 32.0,
-          updraftWidthKm: 2.0,
-          updraftTiltDeg: 10.0,
-          zFreezingKm: 4.8, // Deep warm melting layer
-          lwcMax: 2.8,
-          currentStage: 4,
-          numParticles: 35,
-          soundingNodes: [
-            { zKm: 0.0, tempC: 32.0, dewPointC: 24.0, label: 'Superfície Quente' },
-            { zKm: 2.0, tempC: 18.0, dewPointC: 15.0, label: 'Baixa Troposfera' },
-            { zKm: 4.8, tempC: 0.0, dewPointC: -3.0, label: '0°C Elevado' },
-            { zKm: 7.5, tempC: -18.0, dewPointC: -24.0, label: '-18°C' },
-            { zKm: 10.0, tempC: -38.0, dewPointC: -46.0, label: '-38°C' },
-            { zKm: 13.0, tempC: -62.0, dewPointC: -70.0, label: 'Topo' }
-          ]
-        };
+  public static createDefaultParams(): SimulationParams {
+    return this.createParamsForScenario('supercelula');
+  }
 
-      case 'neve_inverno':
-        return {
-          wMax: 10.0,
-          updraftWidthKm: 1.5,
-          updraftTiltDeg: 4.0,
-          zFreezingKm: 0.0, // Entire column freezing
-          lwcMax: 0.8,
-          shearStrength: 1.0,
-          currentStage: 3,
-          numParticles: 30,
-          soundingNodes: [
-            { zKm: 0.0, tempC: -2.0, dewPointC: -4.0, label: 'Superfície Gelada' },
-            { zKm: 1.5, tempC: -6.0, dewPointC: -7.0, label: 'Base' },
-            { zKm: 3.0, tempC: -14.0, dewPointC: -16.0, label: '-14°C' },
-            { zKm: 6.0, tempC: -30.0, dewPointC: -34.0, label: '-30°C' },
-            { zKm: 9.0, tempC: -48.0, dewPointC: -52.0, label: '-48°C' },
-            { zKm: 12.0, tempC: -65.0, dewPointC: -70.0, label: 'Topo' }
-          ]
-        };
+  public static createParamsForScenario(preset: ScenarioPreset): SimulationParams {
+    const isConvective = preset === 'tempestade_comum' || preset === 'tempestade_forte' || preset === 'supercelula';
+    const nodes = this.getSoundingForScenario(preset);
+    const atmos = new AtmosphericProfile();
+    const zFz = atmos.getFreezingLevel(nodes, 3.0);
 
-      case 'inversao_sleet':
-        return {
-          wMax: 14.0,
-          updraftWidthKm: 1.6,
-          updraftTiltDeg: 5.0,
-          zFreezingKm: 1.2,
-          lwcMax: 1.2,
-          shearStrength: 1.5,
-          currentStage: 3,
-          numParticles: 30,
-          soundingNodes: [
-            { zKm: 0.0, tempC: -3.0, dewPointC: -4.0, label: 'Ar Frio Solo' },
-            { zKm: 1.2, tempC: 0.0, dewPointC: -1.0, label: 'Inversão 0°C' },
-            { zKm: 2.2, tempC: 4.0, dewPointC: 3.0, label: 'Camada Quente' },
-            { zKm: 3.4, tempC: 0.0, dewPointC: -2.0, label: '0°C Superior' },
-            { zKm: 6.5, tempC: -18.0, dewPointC: -24.0, label: '-18°C' },
-            { zKm: 11.0, tempC: -55.0, dewPointC: -60.0, label: 'Topo' }
-          ]
-        };
+    if (!isConvective) {
+      // Thermodynamic Stratiform NOAA Mode
+      return {
+        family: 'thermodynamic',
+        activeScenario: preset,
+        wMax: 0.0,               // No convective updraft
+        updraftWidthKm: 0.0,
+        updraftTiltDeg: 0.0,
+        zFreezingKm: zFz,
+        lwcMax: 0.0,
+        turbulenceIntensity: 0.15,
+        shearStrength: 0.3,
+        subCloudHumidity: 0.85,
+        numParticles: 45,
+        timeScale: 1.0,
+        randomSeed: 1337,
+        currentStage: 1,
+        soundingNodes: nodes
+      };
+    } else {
+      // Convective Severe Hail Storm Mode
+      let wMax = 42.0;
+      let width = 2.4;
+      let tilt = 14.0;
+      let lwc = 3.6;
+      let shear = 2.6;
+      let particles = 40;
+
+      if (preset === 'tempestade_comum') {
+        wMax = 18.0;
+        width = 1.6;
+        tilt = 4.0;
+        lwc = 1.6;
+        shear = 1.0;
+        particles = 30;
+      } else if (preset === 'tempestade_forte') {
+        wMax = 32.0;
+        width = 2.2;
+        tilt = 9.0;
+        lwc = 2.6;
+        shear = 1.8;
+        particles = 36;
+      }
+
+      return {
+        family: 'convective',
+        activeScenario: preset,
+        wMax,
+        updraftWidthKm: width,
+        updraftTiltDeg: tilt,
+        zFreezingKm: zFz,
+        lwcMax: lwc,
+        turbulenceIntensity: 0.4,
+        shearStrength: shear,
+        subCloudHumidity: 0.8,
+        numParticles: particles,
+        timeScale: 1.0,
+        randomSeed: 1337,
+        currentStage: 4,
+        soundingNodes: nodes
+      };
     }
   }
 }

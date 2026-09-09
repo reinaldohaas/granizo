@@ -20,8 +20,12 @@ export class ParticleSystem {
   public frozenFractions: Float32Array;
   public meltedFractions: Float32Array;
   public alive: Uint8Array;
-
   public prevVz: Float32Array;
+
+  // Track melt progress in thermodynamic mode (0 = fully frozen, 1 = fully liquid)
+  public meltProgress: Float32Array;
+  // Track refreeze progress in cold layer (0 = fully liquid, 1 = fully frozen sleet)
+  public freezeProgress: Float32Array;
 
   public trajectories: Array<Array<{ x: number; z: number; d: number }>>;
   public layerHistories: Array<LayerRecord[]>;
@@ -45,6 +49,8 @@ export class ParticleSystem {
     this.meltedFractions = new Float32Array(capacity);
     this.alive = new Uint8Array(capacity);
     this.prevVz = new Float32Array(capacity);
+    this.meltProgress = new Float32Array(capacity);
+    this.freezeProgress = new Float32Array(capacity);
 
     this.trajectories = [];
     this.layerHistories = [];
@@ -54,60 +60,78 @@ export class ParticleSystem {
     }
   }
 
-  public init(numParticles: number, zFreezingKm: number, currentStage: number): void {
+  public init(numParticles: number, isConvective: boolean): void {
     this.activeCount = Math.min(numParticles, this.capacity);
-
     for (let i = 0; i < this.activeCount; i++) {
-      this.spawnParticle(i, zFreezingKm, currentStage, true);
+      this.spawnParticle(i, isConvective, true);
     }
   }
 
-  public spawnParticle(
-    index: number,
-    zFreezingKm: number,
-    currentStage: number,
-    isInitial: boolean = false
-  ): void {
-    const xBase = 8.5;
-    if (isInitial) {
-      this.positionsX[index] = xBase + globalRNG.range(-1.5, 4.0);
-      this.positionsZ[index] = globalRNG.range(2.0, 9.5);
+  public spawnParticle(index: number, isConvective: boolean, isInitial: boolean = false): void {
+    if (!isConvective) {
+      // THERMODYNAMIC NOAA MODE: Spawns aloft as SNOWFLAKES falling from stratiform cloud
+      this.positionsX[index] = globalRNG.range(2.5, 19.5);
+      this.positionsZ[index] = isInitial ? globalRNG.range(1.5, 9.2) : globalRNG.range(7.8, 9.5);
+      this.velocitiesX[index] = globalRNG.gaussian(0.2, 0.4); // gentle lateral drift
+      this.velocitiesZ[index] = globalRNG.range(-1.8, -2.8); // gentle snowflake fall
+
+      this.types[index] = ParticleType.SNOW;
+      const diamMm = globalRNG.range(2.0, 4.0);
+      this.diameters[index] = diamMm;
+      this.masses[index] = 0.002;
+      this.regimes[index] = GrowthRegime.NONE;
+      this.layers[index] = 1;
+      this.recirculations[index] = 0;
+      this.waterCollected[index] = 0;
+      this.frozenFractions[index] = 1.0;
+      this.meltedFractions[index] = 0.0;
+      this.meltProgress[index] = 0.0;
+      this.freezeProgress[index] = 0.0;
+      this.alive[index] = 1;
+      this.prevVz[index] = this.velocitiesZ[index];
     } else {
-      this.positionsX[index] = xBase + globalRNG.range(-1.2, 1.5);
-      this.positionsZ[index] = globalRNG.range(1.8, 3.8);
+      // CONVECTIVE STORM MODE: Spawns near inflow base as small GRAUPEL embryos
+      const xBase = 8.5;
+      if (isInitial) {
+        this.positionsX[index] = xBase + globalRNG.range(-1.5, 4.0);
+        this.positionsZ[index] = globalRNG.range(2.0, 9.5);
+      } else {
+        this.positionsX[index] = xBase + globalRNG.range(-1.2, 1.5);
+        this.positionsZ[index] = globalRNG.range(1.8, 3.8);
+      }
+
+      this.velocitiesX[index] = globalRNG.range(0.5, 3.0);
+      this.velocitiesZ[index] = globalRNG.range(2.0, 8.0);
+      this.prevVz[index] = this.velocitiesZ[index];
+
+      const type = ParticleType.GRAUPEL;
+      const diamMm = globalRNG.range(2.0, 3.8);
+      this.types[index] = type;
+      this.diameters[index] = diamMm;
+      const density = HailstonePhysics.getDensity(diamMm, false);
+      this.masses[index] = HailstonePhysics.massFromDiameter(diamMm, density);
+      this.regimes[index] = GrowthRegime.DRY;
+      this.layers[index] = 1;
+      this.recirculations[index] = 0;
+      this.waterCollected[index] = 0;
+      this.frozenFractions[index] = 1.0;
+      this.meltedFractions[index] = 0.0;
+      this.meltProgress[index] = 0.0;
+      this.freezeProgress[index] = 0.0;
+      this.alive[index] = 1;
     }
 
-    this.velocitiesX[index] = globalRNG.range(0.5, 3.0);
-    this.velocitiesZ[index] = globalRNG.range(2.0, 8.0);
-    this.prevVz[index] = this.velocitiesZ[index];
-
-    // Every hailstone begins as a small embryo: graupel (2.0 to 4.0 mm)
-    const type = ParticleType.GRAUPEL;
-    const diamMm = globalRNG.range(2.0, 3.8);
-
-    this.types[index] = type;
-    this.diameters[index] = diamMm;
-    const density = HailstonePhysics.getDensity(diamMm, false);
-    this.masses[index] = HailstonePhysics.massFromDiameter(diamMm, density);
-    this.regimes[index] = GrowthRegime.DRY;
-    this.layers[index] = 1;
-    this.recirculations[index] = 0;
-    this.waterCollected[index] = 0;
-    this.frozenFractions[index] = 1.0;
-    this.meltedFractions[index] = 0.0;
-    this.alive[index] = 1;
-
-    this.trajectories[index] = [{ x: this.positionsX[index], z: this.positionsZ[index], d: diamMm }];
+    this.trajectories[index] = [{ x: this.positionsX[index], z: this.positionsZ[index], d: this.diameters[index] }];
     this.layerHistories[index] = [{
-      thicknessMm: diamMm,
+      thicknessMm: this.diameters[index],
       regime: GrowthRegime.DRY,
-      temperatureC: -12,
+      temperatureC: -15,
       altitudeKm: this.positionsZ[index],
       timestamp: 0
     }];
   }
 
-  public getTelemetry(index: number, T: number, w: number, vt: number): ParticleTelemetry | null {
+  public getTelemetry(index: number, T: number, Td: number, w: number, vt: number): ParticleTelemetry | null {
     if (index < 0 || index >= this.activeCount || this.alive[index] === 0) return null;
 
     return {
@@ -122,6 +146,7 @@ export class ParticleSystem {
       terminalVelocityMs: vt,
       updraftMs: w,
       temperatureC: T,
+      dewPointC: Td,
       recirculations: this.recirculations[index],
       waterCollectedG: this.waterCollected[index],
       regime: this.regimes[index] as GrowthRegime,

@@ -1,10 +1,11 @@
 import { create } from 'zustand';
-import { SimulationParams, GroundHydrometeorStats, ParticleTelemetry, ScenarioPreset, SoundingNode } from '../types/simulationTypes';
+import { SimulationFamily, SimulationParams, GroundHydrometeorStats, ParticleTelemetry, ScenarioPreset, SoundingNode } from '../types/simulationTypes';
 import { ScenarioFactory } from '../simulation/ScenarioFactory';
 import { AtmosphericProfile } from '../simulation/AtmosphericProfile';
 
 interface SimulationState {
   params: SimulationParams;
+  simulationFamily: SimulationFamily;
   isRunning: boolean;
   showTrajectories: boolean;
   showIsotherms: boolean;
@@ -14,12 +15,13 @@ interface SimulationState {
   selectedTelemetry: ParticleTelemetry | null;
   groundStats: GroundHydrometeorStats;
   activeScenario: ScenarioPreset;
+  resetEpoch: number; // Incremented on mandatory reset to force immediate engine rebuild
 
   // Actions
   setParam: <K extends keyof SimulationParams>(key: K, value: SimulationParams[K]) => void;
   setScenario: (preset: ScenarioPreset) => void;
+  setSoundingNode: (index: number, tempC: number, dewPointC: number, zKm?: number) => void;
   setStage: (stage: number) => void;
-  setSoundingNode: (index: number, tempC: number, dewPointC: number) => void;
   toggleRunning: () => void;
   toggleTrajectories: () => void;
   toggleIsotherms: () => void;
@@ -41,7 +43,11 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   selectedParticleId: 1,
   selectedTelemetry: null,
   groundStats: {
+    snowCount: 0,
     rainCount: 0,
+    sleetCount: 0,
+    freezingRainCount: 0,
+    glazeIceThicknessMm: 0,
     graupelCount: 0,
     smallHailCount: 0,
     mediumHailCount: 0,
@@ -50,18 +56,12 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     totalGrounded: 0
   },
   activeScenario: 'supercelula',
+  simulationFamily: 'convective',
+  resetEpoch: 0,
 
   setParam: (key, value) => {
     set((state) => ({
       params: { ...state.params, [key]: value }
-    }));
-  },
-
-  setScenario: (preset) => {
-    const override = ScenarioFactory.getScenario(preset);
-    set((state) => ({
-      activeScenario: preset,
-      params: { ...state.params, ...override }
     }));
   },
 
@@ -71,17 +71,46 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
     }));
   },
 
-  setSoundingNode: (index, tempC, dewPointC) => {
+  // Mandatory complete reset when changing scenario
+  setScenario: (preset) => {
+    const newParams = ScenarioFactory.createParamsForScenario(preset);
+    set((state) => ({
+      activeScenario: preset,
+      simulationFamily: newParams.family,
+      params: newParams,
+      selectedParticleId: 1,
+      selectedTelemetry: null,
+      resetEpoch: state.resetEpoch + 1,
+      groundStats: {
+        snowCount: 0,
+        rainCount: 0,
+        sleetCount: 0,
+        freezingRainCount: 0,
+        glazeIceThicknessMm: 0,
+        graupelCount: 0,
+        smallHailCount: 0,
+        mediumHailCount: 0,
+        largeHailCount: 0,
+        giantHailCount: 0,
+        totalGrounded: 0
+      }
+    }));
+  },
+
+  setSoundingNode: (index, tempC, dewPointC, zKm) => {
     set((state) => {
       const updatedNodes = [...state.params.soundingNodes];
       if (index >= 0 && index < updatedNodes.length) {
+        // Enforce Td <= T strictly
+        const validTd = Math.min(tempC, dewPointC);
         updatedNodes[index] = {
           ...updatedNodes[index],
           tempC,
-          dewPointC: Math.min(tempC, dewPointC) // Dew point cannot exceed air temp physically
+          dewPointC: validTd,
+          zKm: zKm !== undefined ? zKm : updatedNodes[index].zKm
         };
       }
-      // Recompute freezing level if needed
+
       const atmos = new AtmosphericProfile();
       const zFz = atmos.getFreezingLevel(updatedNodes, state.params.zFreezingKm);
       return {
@@ -98,24 +127,16 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   toggleTrajectories: () => set((state) => ({ showTrajectories: !state.showTrajectories })),
   toggleIsotherms: () => set((state) => ({ showIsotherms: !state.showIsotherms })),
   toggleWindField: () => set((state) => ({ showWindField: !state.showWindField })),
-  toggleCrossSectionModal: (open) => set((state) => ({
-    showCrossSectionModal: open !== undefined ? open : !state.showCrossSectionModal
-  })),
+  toggleCrossSectionModal: (open) =>
+    set((state) => ({
+      showCrossSectionModal: open !== undefined ? open : !state.showCrossSectionModal
+    })),
+  selectParticle: (id) => set(() => ({ selectedParticleId: id })),
+  updateTelemetry: (telemetry) => set(() => ({ selectedTelemetry: telemetry })),
+  updateGroundStats: (stats) => set(() => ({ groundStats: { ...stats } })),
 
-  selectParticle: (id) => set({ selectedParticleId: id }),
-  updateTelemetry: (telemetry) => set({ selectedTelemetry: telemetry }),
-  updateGroundStats: (stats) => set({ groundStats: { ...stats } }),
   resetSimulation: () => {
-    set({
-      groundStats: {
-        rainCount: 0,
-        graupelCount: 0,
-        smallHailCount: 0,
-        mediumHailCount: 0,
-        largeHailCount: 0,
-        giantHailCount: 0,
-        totalGrounded: 0
-      }
-    });
+    const currentPreset = get().activeScenario;
+    get().setScenario(currentPreset);
   }
 }));

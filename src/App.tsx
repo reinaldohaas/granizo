@@ -16,6 +16,7 @@ export const App: React.FC = () => {
   const toggleRunning = useSimulationStore((state) => state.toggleRunning);
   const resetSimulation = useSimulationStore((state) => state.resetSimulation);
   const groundStats = useSimulationStore((state) => state.groundStats);
+  const simulationFamily = useSimulationStore((state) => state.simulationFamily);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-white">
@@ -128,35 +129,68 @@ export const App: React.FC = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <ParticleInspector />
                 <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-xl text-xs space-y-2">
-                  <h4 className="font-bold text-white flex items-center gap-1.5 text-xs border-b border-slate-800 pb-2">
-                    <span>📊</span> Acúmulo de Hidrometeoros no Solo
+                  <h4 className="font-bold text-white flex items-center justify-between text-xs border-b border-slate-800 pb-2">
+                    <span className="flex items-center gap-1.5">
+                      <span>📊</span> Acúmulo de Hidrometeoros no Solo
+                    </span>
+                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${
+                      simulationFamily === 'thermodynamic' ? 'bg-blue-950 text-blue-300 border border-blue-800/60' : 'bg-amber-950 text-amber-300 border border-amber-800/60'
+                    }`}>
+                      {simulationFamily === 'thermodynamic' ? 'Modo NOAA NESDIS' : 'Modo Convectivo'}
+                    </span>
                   </h4>
-                  <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
-                    <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 flex justify-between items-center">
-                      <span className="text-cyan-400">🌧️ Chuva:</span>
-                      <strong className="text-white text-xs">{groundStats.rainCount}</strong>
+                  
+                  {simulationFamily === 'thermodynamic' ? (
+                    <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
+                      <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 flex justify-between items-center">
+                        <span className="text-white">❄️ Neve (Snow):</span>
+                        <strong className="text-white text-xs">{groundStats.snowCount}</strong>
+                      </div>
+                      <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 flex justify-between items-center">
+                        <span className="text-cyan-400">🌧️ Chuva (Rain):</span>
+                        <strong className="text-white text-xs">{groundStats.rainCount}</strong>
+                      </div>
+                      <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 flex justify-between items-center">
+                        <span className="text-indigo-300">🍚 Pelotas de gelo (sleet):</span>
+                        <strong className="text-white text-xs">{groundStats.sleetCount}</strong>
+                      </div>
+                      <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 flex justify-between items-center">
+                        <span className="text-sky-300">⛸️ Chuva Congelante:</span>
+                        <strong className="text-white text-xs">{groundStats.freezingRainCount}</strong>
+                      </div>
+                      <div className="col-span-2 bg-slate-950 p-2 rounded-lg border border-cyan-800/60 flex justify-between items-center">
+                        <span className="text-cyan-300 font-sans font-semibold">🧊 Filme de Gelo Vítreo (Glaze):</span>
+                        <strong className="text-cyan-300 text-xs font-mono">{groundStats.glazeIceThicknessMm.toFixed(2)} mm</strong>
+                      </div>
                     </div>
-                    <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 flex justify-between items-center">
-                      <span className="text-slate-300">🍚 Graupel:</span>
-                      <strong className="text-white text-xs">{groundStats.graupelCount}</strong>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
+                      <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 flex justify-between items-center">
+                        <span className="text-cyan-400">🌧️ Chuva:</span>
+                        <strong className="text-white text-xs">{groundStats.rainCount}</strong>
+                      </div>
+                      <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 flex justify-between items-center">
+                        <span className="text-slate-300">🍚 Graupel:</span>
+                        <strong className="text-white text-xs">{groundStats.graupelCount}</strong>
+                      </div>
+                      <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 flex justify-between items-center">
+                        <span className="text-blue-300">🧊 Peq. (&lt;15mm):</span>
+                        <strong className="text-white text-xs">{groundStats.smallHailCount}</strong>
+                      </div>
+                      <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 flex justify-between items-center">
+                        <span className="text-amber-300">⚠️ Méd. (15-30mm):</span>
+                        <strong className="text-white text-xs">{groundStats.mediumHailCount}</strong>
+                      </div>
+                      <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 flex justify-between items-center">
+                        <span className="text-orange-400">🚨 Gde. (30-50mm):</span>
+                        <strong className="text-white text-xs">{groundStats.largeHailCount}</strong>
+                      </div>
+                      <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 flex justify-between items-center">
+                        <span className="text-rose-400">💥 Gigante (&gt;50mm):</span>
+                        <strong className="text-white text-xs">{groundStats.giantHailCount}</strong>
+                      </div>
                     </div>
-                    <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 flex justify-between items-center">
-                      <span className="text-blue-300">🧊 Granizo Peq. (&lt;15mm):</span>
-                      <strong className="text-white text-xs">{groundStats.smallHailCount}</strong>
-                    </div>
-                    <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 flex justify-between items-center">
-                      <span className="text-amber-300">⚠️ Granizo Méd. (15-30mm):</span>
-                      <strong className="text-white text-xs">{groundStats.mediumHailCount}</strong>
-                    </div>
-                    <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 flex justify-between items-center">
-                      <span className="text-orange-400">🚨 Granizo Gde. (30-50mm):</span>
-                      <strong className="text-white text-xs">{groundStats.largeHailCount}</strong>
-                    </div>
-                    <div className="bg-slate-950 p-2 rounded-lg border border-slate-800 flex justify-between items-center">
-                      <span className="text-rose-400">💥 Gigante (&gt;50mm):</span>
-                      <strong className="text-white text-xs">{groundStats.giantHailCount}</strong>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>

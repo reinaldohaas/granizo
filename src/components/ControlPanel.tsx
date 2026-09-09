@@ -9,6 +9,7 @@ export const ControlPanel: React.FC = () => {
     showTrajectories,
     showIsotherms,
     showWindField,
+    simulationFamily,
     setParam,
     toggleRunning,
     toggleTrajectories,
@@ -17,14 +18,21 @@ export const ControlPanel: React.FC = () => {
     resetSimulation
   } = useSimulationStore();
 
+  const isConvective = simulationFamily === 'convective';
+
   return (
     <div className="bg-slate-900/95 backdrop-blur-md border border-slate-800 rounded-2xl p-4 shadow-xl space-y-4 text-xs">
       
       {/* Header & Quick Action Buttons */}
       <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-        <h3 className="font-bold text-white uppercase tracking-wider flex items-center gap-1.5 text-xs">
-          <span>⚙️</span> Controles e Parâmetros
-        </h3>
+        <div>
+          <h3 className="font-bold text-white uppercase tracking-wider flex items-center gap-1.5 text-xs">
+            <span>⚙️</span> {isConvective ? 'Controles Convectivos' : 'Controles Termodinâmicos'}
+          </h3>
+          <span className={`text-[10px] font-medium ${isConvective ? 'text-amber-400' : 'text-blue-400'}`}>
+            {isConvective ? 'Tempestade com Updraft & Granizo' : 'Simulador NOAA NESDIS (Estratiforme)'}
+          </span>
+        </div>
         
         <div className="flex items-center gap-2">
           <button
@@ -76,94 +84,108 @@ export const ControlPanel: React.FC = () => {
         </button>
       </div>
 
+      {/* Thermodynamic NOAA Banner */}
+      {!isConvective && (
+        <div className="p-2.5 rounded-xl bg-blue-950/40 border border-blue-800/40 text-[11px] text-blue-200 leading-relaxed">
+          <p className="font-semibold text-blue-300 mb-1">Princípio Físico NOAA NESDIS:</p>
+          Queda gravitacional contínua (sem correntes convectivas) com transformações de fase governadas pelo perfil de T e Td. Edite as 4 altitudes na radiossondagem interativa abaixo para criar chuva, neve, sleet ou chuva congelante.
+        </div>
+      )}
+
       {/* Interactive Sliders */}
       <div className="space-y-3 pt-1">
         
-        {/* wMax */}
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs">
-            <span className="text-slate-300">Updraft Máximo (w<sub>max</sub>):</span>
-            <strong className="text-cyan-400 font-mono">{params.wMax.toFixed(0)} m/s</strong>
-          </div>
-          <input
-            type="range"
-            min="5"
-            max="55"
-            step="1"
-            value={params.wMax}
-            onChange={(e) => setParam('wMax', parseFloat(e.target.value))}
-            className="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer"
-          />
-        </div>
+        {/* Convective-only sliders */}
+        {isConvective && (
+          <>
+            {/* wMax */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-300">Updraft Máximo (w<sub>max</sub>):</span>
+                <strong className="text-amber-400 font-mono">{params.wMax.toFixed(0)} m/s</strong>
+              </div>
+              <input
+                type="range"
+                min="5"
+                max="55"
+                step="1"
+                value={params.wMax}
+                onChange={(e) => setParam('wMax', parseFloat(e.target.value))}
+                className="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer"
+              />
+            </div>
 
-        {/* zFreezing */}
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs">
-            <span className="text-slate-300">Nível de 0 °C (Altitude):</span>
-            <strong className="text-cyan-400 font-mono">{params.zFreezingKm.toFixed(1)} km</strong>
-          </div>
-          <input
-            type="range"
-            min="1.5"
-            max="5.0"
-            step="0.1"
-            value={params.zFreezingKm}
-            onChange={(e) => setParam('zFreezingKm', parseFloat(e.target.value))}
-            className="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer"
-          />
-        </div>
+            {/* zFreezing */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-300">Nível de 0 °C (Altitude):</span>
+                <strong className="text-cyan-400 font-mono">{params.zFreezingKm.toFixed(1)} km</strong>
+              </div>
+              <input
+                type="range"
+                min="1.5"
+                max="5.0"
+                step="0.1"
+                value={params.zFreezingKm}
+                onChange={(e) => setParam('zFreezingKm', parseFloat(e.target.value))}
+                className="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer"
+              />
+            </div>
 
-        {/* LWC */}
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs">
-            <span className="text-slate-300">Água Super-resfriada (LWC):</span>
-            <strong className="text-cyan-400 font-mono">{params.lwcMax.toFixed(1)} g/m³</strong>
-          </div>
-          <input
-            type="range"
-            min="0.5"
-            max="5.0"
-            step="0.1"
-            value={params.lwcMax}
-            onChange={(e) => setParam('lwcMax', parseFloat(e.target.value))}
-            className="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer"
-          />
-        </div>
+            {/* LWC */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-300">Água Super-resfriada (LWC):</span>
+                <strong className="text-cyan-400 font-mono">{params.lwcMax.toFixed(1)} g/m³</strong>
+              </div>
+              <input
+                type="range"
+                min="0.5"
+                max="5.0"
+                step="0.1"
+                value={params.lwcMax}
+                onChange={(e) => setParam('lwcMax', parseFloat(e.target.value))}
+                className="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer"
+              />
+            </div>
 
-        {/* Updraft Width */}
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs">
-            <span className="text-slate-300">Largura do Núcleo:</span>
-            <strong className="text-cyan-400 font-mono">{params.updraftWidthKm.toFixed(1)} km</strong>
-          </div>
-          <input
-            type="range"
-            min="0.8"
-            max="4.0"
-            step="0.2"
-            value={params.updraftWidthKm}
-            onChange={(e) => setParam('updraftWidthKm', parseFloat(e.target.value))}
-            className="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer"
-          />
-        </div>
+            {/* Updraft Width */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-300">Largura do Núcleo:</span>
+                <strong className="text-cyan-400 font-mono">{params.updraftWidthKm.toFixed(1)} km</strong>
+              </div>
+              <input
+                type="range"
+                min="0.8"
+                max="4.0"
+                step="0.2"
+                value={params.updraftWidthKm}
+                onChange={(e) => setParam('updraftWidthKm', parseFloat(e.target.value))}
+                className="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer"
+              />
+            </div>
 
-        {/* Tilt / Shear */}
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs">
-            <span className="text-slate-300">Inclinação / Cisalhamento:</span>
-            <strong className="text-cyan-400 font-mono">{params.updraftTiltDeg.toFixed(0)}°</strong>
-          </div>
-          <input
-            type="range"
-            min="0"
-            max="25"
-            step="1"
-            value={params.updraftTiltDeg}
-            onChange={(e) => setParam('updraftTiltDeg', parseFloat(e.target.value))}
-            className="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer"
-          />
-        </div>
+            {/* Tilt / Shear */}
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-300">Inclinação / Cisalhamento:</span>
+                <strong className="text-cyan-400 font-mono">{params.updraftTiltDeg.toFixed(0)}°</strong>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="25"
+                step="1"
+                value={params.updraftTiltDeg}
+                onChange={(e) => setParam('updraftTiltDeg', parseFloat(e.target.value))}
+                className="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer"
+              />
+            </div>
+          </>
+        )}
 
+        {/* Sliders common to both families */}
         {/* Number of Particles */}
         <div className="space-y-1">
           <div className="flex justify-between text-xs">
@@ -173,7 +195,7 @@ export const ControlPanel: React.FC = () => {
           <input
             type="range"
             min="15"
-            max="70"
+            max="80"
             step="5"
             value={params.numParticles}
             onChange={(e) => setParam('numParticles', parseInt(e.target.value))}
