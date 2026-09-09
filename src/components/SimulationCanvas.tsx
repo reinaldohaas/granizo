@@ -175,9 +175,17 @@ export const SimulationCanvas: React.FC = () => {
         }
 
         // Updraft Banner Badge
-        ctx.fillStyle = 'rgba(245, 158, 11, 0.95)';
-        ctx.font = 'bold 11px JetBrains Mono, monospace';
-        ctx.fillText('▲ CORRENTE ASCENDENTE (+w: Sobe e Cresce)', kmToX(xUpBase - 1.5), kmToY(4.5));
+        const upBadgeX = kmToX(xUpTop - 1.8);
+        const upBadgeY = kmToY(11.4);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.fillRect(upBadgeX - 4, upBadgeY - 12, 190, 18);
+        ctx.strokeStyle = '#f59e0b';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(upBadgeX - 4, upBadgeY - 12, 190, 18);
+
+        ctx.fillStyle = '#fbbf24';
+        ctx.font = 'bold 10px JetBrains Mono, monospace';
+        ctx.fillText('▲ CORRENTE ASCENDENTE (Updraft)', upBadgeX, upBadgeY);
       }
       ctx.restore();
 
@@ -186,6 +194,7 @@ export const SimulationCanvas: React.FC = () => {
       const xDownTop = engine.wind.getDowndraftX(9.5);
 
       ctx.save();
+      // Downdraft precipitation column
       ctx.beginPath();
       ctx.moveTo(kmToX(xDownTop - 2.2), kmToY(9.5));
       ctx.lineTo(kmToX(xDownBase - 2.0), groundY);
@@ -230,9 +239,17 @@ export const SimulationCanvas: React.FC = () => {
         }
 
         // Downdraft Banner Badge
-        ctx.fillStyle = 'rgba(129, 140, 248, 0.95)';
-        ctx.font = 'bold 11px JetBrains Mono, monospace';
-        ctx.fillText('▼ CORRENTE DESCENDENTE (-w: Granizo ao Solo)', kmToX(xDownBase - 2.8), kmToY(5.2));
+        const downBadgeX = kmToX(xDownTop - 1.8);
+        const downBadgeY = kmToY(9.2);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.fillRect(downBadgeX - 4, downBadgeY - 12, 195, 18);
+        ctx.strokeStyle = '#818cf8';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(downBadgeX - 4, downBadgeY - 12, 195, 18);
+
+        ctx.fillStyle = '#a5b4fc';
+        ctx.font = 'bold 10px JetBrains Mono, monospace';
+        ctx.fillText('▼ CORRENTE DESCENDENTE (Downdraft)', downBadgeX, downBadgeY);
       }
       ctx.restore();
 
