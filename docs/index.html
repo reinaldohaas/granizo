@@ -4,11 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Simulador de Formação de Granizo em Nuvem Convectiva Profunda</title>
+    <script>
+      // Prevent 404 on GitHub Pages if accessed without trailing slash
+      if (location.hostname.endsWith('github.io') && !location.pathname.endsWith('/') && !location.pathname.endsWith('.html')) {
+        location.replace(location.pathname + '/' + location.search + location.hash);
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
-    <script type="module" crossorigin src="./assets/index-B3I4Na_M.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-CzJWDhVd.css">
+    <script type="module" crossorigin src="/granizo/assets/index-BxybKZP1.js"></script>
+    <link rel="stylesheet" crossorigin href="/granizo/assets/index-BxVErnxW.css">
   </head>
   <body class="bg-slate-950 text-slate-100 antialiased overflow-x-hidden selection:bg-cyan-500 selection:text-white">
     <div id="root"></div>
