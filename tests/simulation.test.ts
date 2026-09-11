@@ -242,3 +242,60 @@ describe('Byers & Braham Ordinary Storm (Tempestade Comum) Particle Lifecycle', 
   });
 });
 
+describe('Independent Precipitation Types Laboratories (Refurbished)', () => {
+  it('configures Neve with sub-zero column and customizable snowflake diameter', async () => {
+    const { SimulationEngine } = await import('../src/simulation/SimulationEngine');
+    const { ScenarioFactory } = await import('../src/simulation/ScenarioFactory');
+
+    const params = ScenarioFactory.createParamsForScenario('neve');
+    expect(params.family).toBe('thermodynamic');
+    expect(params.snowflakeSizeMm).toBeGreaterThanOrEqual(1.5);
+
+    params.snowflakeSizeMm = 5.2; // Custom large dendritic snowflake
+    const engine = new SimulationEngine(params);
+    engine.init();
+
+    // Check spawned snow particles have expected size range
+    const firstDiam = engine.particles.diameters[0];
+    expect(firstDiam).toBeGreaterThanOrEqual(3.5);
+    expect(firstDiam).toBeLessThanOrEqual(7.0);
+  });
+
+  it('configures Chuva with melting layer and liquid raindrops', async () => {
+    const { ScenarioFactory } = await import('../src/simulation/ScenarioFactory');
+    const { AtmosphericProfile } = await import('../src/simulation/AtmosphericProfile');
+
+    const params = ScenarioFactory.createParamsForScenario('chuva');
+    expect(params.family).toBe('thermodynamic');
+    expect(params.raindropSizeMm).toBeGreaterThan(1.0);
+
+    const atmos = new AtmosphericProfile();
+    const classif = AtmosphericProfile.classifyPrecipitation(params.soundingNodes);
+    expect(classif.type).toBe('chuva');
+  });
+
+  it('configures Sleet (Pelotas de Gelo) with deep cold refreezing layer (>= 1.2 km)', async () => {
+    const { ScenarioFactory } = await import('../src/simulation/ScenarioFactory');
+    const { AtmosphericProfile } = await import('../src/simulation/AtmosphericProfile');
+
+    const params = ScenarioFactory.createParamsForScenario('sleet');
+    expect(params.coldLayerDepthKm).toBeGreaterThanOrEqual(1.2);
+
+    const classif = AtmosphericProfile.classifyPrecipitation(params.soundingNodes);
+    expect(classif.type).toBe('sleet');
+  });
+
+  it('configures Chuva Congelante with shallow cold pool (< 1.0 km) and glaze ice accretion', async () => {
+    const { ScenarioFactory } = await import('../src/simulation/ScenarioFactory');
+    const { AtmosphericProfile } = await import('../src/simulation/AtmosphericProfile');
+
+    const params = ScenarioFactory.createParamsForScenario('chuva_congelante');
+    expect(params.coldLayerDepthKm).toBeLessThan(1.0);
+    expect(params.glazeAccretionRateMmH).toBeGreaterThan(0);
+
+    const classif = AtmosphericProfile.classifyPrecipitation(params.soundingNodes);
+    expect(classif.type).toBe('chuva_congelante');
+  });
+});
+
+

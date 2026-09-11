@@ -34,6 +34,11 @@ interface SimulationState {
   updateTelemetry: (telemetry: ParticleTelemetry | null) => void;
   updateGroundStats: (stats: GroundHydrometeorStats) => void;
   resetSimulation: () => void;
+  resetCurrentScenarioToDefault: () => void;
+  setSurfaceTemp: (tempC: number) => void;
+  setWarmNoseTemp: (tempC: number) => void;
+  setColdLayerDepth: (depthKm: number) => void;
+  setFreezingLevelHeight: (heightKm: number) => void;
 }
 
 export const useSimulationStore = create<SimulationState>((set, get) => ({
@@ -159,5 +164,43 @@ export const useSimulationStore = create<SimulationState>((set, get) => ({
   resetSimulation: () => {
     const currentPreset = get().activeScenario;
     get().setScenario(currentPreset);
+  },
+
+  resetCurrentScenarioToDefault: () => {
+    const currentPreset = get().activeScenario;
+    get().setScenario(currentPreset);
+  },
+
+  setSurfaceTemp: (tempC: number) => {
+    const nodes = get().params.soundingNodes;
+    if (nodes.length > 0) {
+      const curTd = nodes[0].dewPointC;
+      const validTd = Math.min(tempC, curTd);
+      get().setSoundingNode(0, tempC, validTd);
+    }
+  },
+
+  setWarmNoseTemp: (tempC: number) => {
+    const nodes = get().params.soundingNodes;
+    // In Sleet/Freezing Rain, node 2 (index 2) is the warm nose aloft
+    if (nodes.length > 2) {
+      const curTd = nodes[2].dewPointC;
+      const validTd = Math.min(tempC, curTd);
+      get().setSoundingNode(2, tempC, validTd);
+      get().setParam('warmNoseTempC', tempC);
+    }
+  },
+
+  setColdLayerDepth: (depthKm: number) => {
+    const nodes = get().params.soundingNodes;
+    // Node 1 (index 1) marks the top of the cold surface layer
+    if (nodes.length > 1) {
+      get().setSoundingNode(1, nodes[1].tempC, nodes[1].dewPointC, depthKm);
+      get().setParam('coldLayerDepthKm', depthKm);
+    }
+  },
+
+  setFreezingLevelHeight: (heightKm: number) => {
+    get().setParam('zFreezingKm', heightKm);
   }
 }));

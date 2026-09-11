@@ -17,6 +17,52 @@ export const App: React.FC = () => {
   const resetSimulation = useSimulationStore((state) => state.resetSimulation);
   const groundStats = useSimulationStore((state) => state.groundStats);
   const simulationFamily = useSimulationStore((state) => state.simulationFamily);
+  const activeScenario = useSimulationStore((state) => state.activeScenario);
+  const setScenario = useSimulationStore((state) => state.setScenario);
+
+  const scenarioMeta: Record<string, { name: string; icon: string; pathway: string }> = {
+    neve: {
+      name: 'Neve (Snow)',
+      icon: '❄️',
+      pathway: 'Formação aloft (< 0 °C) ➔ Coluna 100% Sub-zero ➔ Chega ao solo como flocos de neve'
+    },
+    chuva: {
+      name: 'Chuva Líquida (Rain)',
+      icon: '🌧️',
+      pathway: 'Formação aloft (< 0 °C) ➔ Fusão completa na camada quente profunda (> 0 °C) ➔ Chega ao solo como chuva líquida'
+    },
+    sleet: {
+      name: 'Pelotas de Gelo (Sleet)',
+      icon: '🍚',
+      pathway: 'Fusão no nariz quente ➔ Recongelação na camada fria profunda (≥ 1.2 km) ➔ Chega ao solo como pelota rígida'
+    },
+    chuva_congelante: {
+      name: 'Chuva Congelante (Freezing Rain)',
+      icon: '⛸️',
+      pathway: 'Fusão na camada quente ➔ Queda em camada fria rasa (< 1.0 km) sem tempo de congelar no ar ➔ Congela no solo criando gelo vítreo (glaze)'
+    },
+    tempestade_comum: {
+      name: 'Tempestade Comum (Célula Ordinária)',
+      icon: '🟢',
+      pathway: 'Ciclo Byers & Braham (1949) em 30 min: Updraft inicial ➔ Núcleo maduro com granizo & downdraft ➔ Queda e dissipação'
+    },
+    tempestade_forte: {
+      name: 'Tempestade Forte (Multicelular)',
+      icon: '🟡',
+      pathway: 'Sucessão de células na linha de flanco (IV → III → II → I) com frente de rajada e núcleos 10, 30, 50 dBZ'
+    },
+    supercelula: {
+      name: 'Supercélula Severa',
+      icon: '🔴',
+      pathway: 'Updraft violento rotativo (> 40 m/s), núcleo inclinado e granizo gigante (> 5 cm)'
+    }
+  };
+
+  const currentMeta = scenarioMeta[activeScenario] || {
+    name: 'Cenário Ativo',
+    icon: '🌧️',
+    pathway: 'Simulação atmosférica interativa'
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-white">
@@ -115,6 +161,58 @@ export const App: React.FC = () => {
             
             {/* LEFT COLUMN: THE CLOUD SIMULATION VIEWPORT (7 or 8 COLS) */}
             <div className="lg:col-span-7 xl:col-span-8 space-y-3">
+              
+              {/* Independent Precipitation Type Hub Banner */}
+              <div className="bg-slate-900/90 border border-slate-800 rounded-2xl p-3 shadow-lg flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-base shadow-sm">
+                    {currentMeta.icon}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-sm font-bold text-white tracking-tight">{currentMeta.name}</h2>
+                      <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold uppercase tracking-wider ${
+                        simulationFamily === 'thermodynamic'
+                          ? 'bg-blue-950 text-blue-300 border border-blue-800/60'
+                          : 'bg-amber-950 text-amber-300 border border-amber-800/60'
+                      }`}>
+                        {simulationFamily === 'thermodynamic' ? 'Física NOAA NESDIS' : 'Convecção & Granizo'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-300 font-mono mt-0.5">
+                      {currentMeta.pathway}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 bg-slate-950/80 p-1 rounded-xl border border-slate-800">
+                  <span className="text-[10px] uppercase font-bold text-slate-400 px-1.5 hidden 2xl:inline">
+                    Trocar Tipo:
+                  </span>
+                  {[
+                    { key: 'neve', label: '❄️ Neve' },
+                    { key: 'chuva', label: '🌧️ Chuva' },
+                    { key: 'sleet', label: '🍚 Sleet' },
+                    { key: 'chuva_congelante', label: '⛸️ Chuva Cong.' },
+                    { key: 'tempestade_comum', label: '🟢 Comum' },
+                    { key: 'tempestade_forte', label: '🟡 Multicélula' },
+                    { key: 'supercelula', label: '🔴 Supercélula' },
+                  ].map((btn) => (
+                    <button
+                      key={btn.key}
+                      onClick={() => setScenario(btn.key as any)}
+                      className={`px-2 py-1 rounded-lg text-[11px] font-semibold border transition ${
+                        activeScenario === btn.key
+                          ? 'bg-cyan-950 border-cyan-400 text-cyan-200 shadow-sm font-bold'
+                          : 'border-transparent bg-slate-900/60 text-slate-400 hover:text-white hover:border-slate-800'
+                      }`}
+                    >
+                      {btn.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Cloud Canvas */}
               <div className="relative">
                 <SimulationCanvas />

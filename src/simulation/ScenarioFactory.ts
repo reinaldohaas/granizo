@@ -33,11 +33,11 @@ export class ScenarioFactory {
         ];
 
       case 'chuva_congelante':
-        // Deep warm layer aloft (+6°C at 4 km), then SHALLOW cold layer (< 0.9 km)
+        // Deep warm layer aloft (+7.5°C at 3.5 km), then SHALLOW cold layer (< 0.8 km)
         return [
-          { zKm: 0.0, tempC: -2.5, dewPointC: -3.5, label: 'Nível 1 - Superfície Subzero (0 km)' },
-          { zKm: 0.8, tempC: -1.0, dewPointC: -2.0, label: 'Nível 2 - Camada Fria Rasa (0.8 km)' },
-          { zKm: 4.0, tempC: 7.0, dewPointC: 5.5, label: 'Nível 3 - Camada Quente Profunda (4.0 km)' },
+          { zKm: 0.0, tempC: -2.0, dewPointC: -3.0, label: 'Nível 1 - Superfície Subzero (0 km)' },
+          { zKm: 0.6, tempC: -0.5, dewPointC: -1.5, label: 'Nível 2 - Camada Fria Rasa (0.6 km)' },
+          { zKm: 3.5, tempC: 7.5, dewPointC: 6.0, label: 'Nível 3 - Camada Quente Profunda (3.5 km)' },
           { zKm: 9.0, tempC: -26.0, dewPointC: -29.0, label: 'Nível 4 - Topo da Nuvem (9.0 km)' }
         ];
 
@@ -80,6 +80,27 @@ export class ScenarioFactory {
 
     if (!isConvective) {
       // Thermodynamic Stratiform NOAA Mode
+      let snowSize = 3.2;
+      let rainSize = 2.4;
+      let warmNose = 0.0;
+      let coldDepth = 0.0;
+      let glazeRate = 0.0;
+
+      if (preset === 'neve') {
+        snowSize = 3.5;
+        coldDepth = 9.0;
+      } else if (preset === 'chuva') {
+        rainSize = 2.8;
+        warmNose = 15.0;
+      } else if (preset === 'sleet') {
+        warmNose = 5.0;
+        coldDepth = 1.8; // Criteria >= 1.2 km
+      } else if (preset === 'chuva_congelante') {
+        warmNose = 7.0;
+        coldDepth = 0.8; // Criteria < 1.0 km
+        glazeRate = 1.8;
+      }
+
       return {
         family: 'thermodynamic',
         activeScenario: preset,
@@ -98,6 +119,12 @@ export class ScenarioFactory {
         stormMinutes: 0.0,
         autoEvolveStorm: false,
         stormEvolutionRate: 1.2,
+        precipIntensity: 3,
+        snowflakeSizeMm: snowSize,
+        raindropSizeMm: rainSize,
+        warmNoseTempC: warmNose,
+        coldLayerDepthKm: coldDepth,
+        glazeAccretionRateMmH: glazeRate,
         soundingNodes: nodes
       };
     } else {
@@ -147,6 +174,12 @@ export class ScenarioFactory {
         stormMinutes: stormMin,
         autoEvolveStorm: autoEvolve,
         stormEvolutionRate: 1.2,
+        precipIntensity: 3,
+        snowflakeSizeMm: 3.0,
+        raindropSizeMm: 2.5,
+        warmNoseTempC: 0.0,
+        coldLayerDepthKm: 0.0,
+        glazeAccretionRateMmH: 0.0,
         soundingNodes: nodes
       };
     }

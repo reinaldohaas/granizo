@@ -215,9 +215,15 @@ export const SimulationCanvas: React.FC = () => {
         ctx.strokeStyle = 'rgba(148, 163, 184, 0.3)';
         ctx.stroke();
 
-        ctx.fillStyle = 'rgba(203, 213, 225, 0.6)';
+        // Shaded sub-freezing column
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.05)';
+        ctx.fillRect(kmToX(1.0), kmToY(8.5), kmToX(20.0), groundY - kmToY(8.5));
+
+        ctx.fillStyle = '#bae6fd';
         ctx.font = 'bold 11px JetBrains Mono, monospace';
         ctx.fillText('Nimbostratus Amplo Estratiforme (Neve)', kmToX(2.0), kmToY(8.0));
+        ctx.font = '9px JetBrains Mono, monospace';
+        ctx.fillText('❄️ Coluna 100% Sub-zero (T < 0°C): Flocos de neve caem e acumulam-se intactos no solo', kmToX(2.0), kmToY(4.5));
 
       } else if (scenario === 'chuva') {
         // Nimbostratus com base escura (Chuva)
@@ -235,9 +241,15 @@ export const SimulationCanvas: React.FC = () => {
         ctx.strokeStyle = 'rgba(71, 85, 105, 0.5)';
         ctx.stroke();
 
-        ctx.fillStyle = 'rgba(203, 213, 225, 0.6)';
+        const fzKm = engine.params.zFreezingKm;
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.07)';
+        ctx.fillRect(kmToX(1.5), kmToY(fzKm), kmToX(19.0), groundY - kmToY(fzKm));
+
+        ctx.fillStyle = '#67e8f9';
         ctx.font = 'bold 11px JetBrains Mono, monospace';
         ctx.fillText('Nimbostratus com Base Escura (Chuva Estratiforme)', kmToX(2.0), kmToY(7.4));
+        ctx.font = '9px JetBrains Mono, monospace';
+        ctx.fillText(`🌧️ Camada Quente de Fusão (T > 0°C, 0 a ${fzKm.toFixed(1)} km): Neve derrete completamente em gotas de chuva`, kmToX(2.0), kmToY(Math.max(1.0, fzKm * 0.5)));
 
       } else if (scenario === 'sleet') {
         // Nimbostratus associado ao perfil com camada quente de fusão (Pelotas de Gelo)
@@ -252,19 +264,22 @@ export const SimulationCanvas: React.FC = () => {
         ctx.strokeStyle = 'rgba(99, 102, 241, 0.4)';
         ctx.stroke();
 
+        const coldDepthKm = engine.params.soundingNodes[1]?.zKm ?? 1.8;
+        const warmTopKm = 5.5;
+
         // Shaded warm nose band in mid levels
-        ctx.fillStyle = 'rgba(239, 68, 68, 0.08)';
-        ctx.fillRect(kmToX(1.5), kmToY(5.2), kmToX(19.0), kmToY(3.8) - kmToY(5.2));
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.12)';
+        ctx.fillRect(kmToX(1.5), kmToY(warmTopKm), kmToX(19.0), kmToY(coldDepthKm) - kmToY(warmTopKm));
 
         // Shaded cold refreezing layer below
-        ctx.fillStyle = 'rgba(99, 102, 241, 0.12)';
-        ctx.fillRect(kmToX(1.5), kmToY(2.2), kmToX(19.0), groundY - kmToY(2.2));
+        ctx.fillStyle = 'rgba(99, 102, 241, 0.16)';
+        ctx.fillRect(kmToX(1.5), kmToY(coldDepthKm), kmToX(19.0), groundY - kmToY(coldDepthKm));
 
         ctx.fillStyle = '#a5b4fc';
         ctx.font = 'bold 11px JetBrains Mono, monospace';
         ctx.fillText('Nimbostratus Frontal (Pelotas de Gelo / Sleet)', kmToX(2.0), kmToY(8.2));
         ctx.font = '9px JetBrains Mono, monospace';
-        ctx.fillText('▲ Camada Quente (Neve derrete em gota) | ▼ Camada Fria Profunda (Gota recongela em pelota de gelo)', kmToX(2.0), kmToY(4.5));
+        ctx.fillText(`▲ Nariz Quente: Fusão da Neve | ▼ Camada Fria Profunda (${coldDepthKm.toFixed(1)} km >= 1.2 km): Recongelação em Pelotas de Gelo`, kmToX(2.0), kmToY(4.5));
 
       } else if (scenario === 'chuva_congelante') {
         // Nimbostratus amplo e baixo (Chuva Congelante)
@@ -282,15 +297,22 @@ export const SimulationCanvas: React.FC = () => {
         ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
         ctx.stroke();
 
+        const coldDepthKm = engine.params.soundingNodes[1]?.zKm ?? 0.8;
+        const warmTopKm = 5.0;
+
+        // Shaded warm layer
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.10)';
+        ctx.fillRect(kmToX(1.0), kmToY(warmTopKm), kmToX(20.0), kmToY(coldDepthKm) - kmToY(warmTopKm));
+
         // Shaded shallow cold surface pool
-        ctx.fillStyle = 'rgba(56, 189, 248, 0.14)';
-        ctx.fillRect(kmToX(1.0), kmToY(0.9), kmToX(20.0), groundY - kmToY(0.9));
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.20)';
+        ctx.fillRect(kmToX(1.0), kmToY(coldDepthKm), kmToX(20.0), groundY - kmToY(coldDepthKm));
 
         ctx.fillStyle = '#67e8f9';
         ctx.font = 'bold 11px JetBrains Mono, monospace';
         ctx.fillText('Nimbostratus Baixo (Chuva Congelante / Freezing Rain)', kmToX(2.0), kmToY(7.0));
         ctx.font = '9px JetBrains Mono, monospace';
-        ctx.fillText('▲ Fusão Completa na Camada Quente | ▼ Camada Fria Rasa (< 1 km): Gota super-resfria e congela no contato com o solo', kmToX(2.0), kmToY(3.8));
+        ctx.fillText(`▲ Fusão na Camada Quente | ▼ Camada Fria Rasa (${coldDepthKm.toFixed(2)} km < 1.0 km): Super-resfriamento e Congelamento no Solo`, kmToX(2.0), kmToY(3.8));
 
       } else if (scenario === 'tempestade_comum') {
         const tMin = engine.params.stormMinutes ?? 0.0;
@@ -1048,7 +1070,7 @@ export const SimulationCanvas: React.FC = () => {
 
       // If Freezing Rain is occurring, draw glowing icy glaze layer over the ground!
       const glazeMm = engine.groundStats.glazeIceThicknessMm;
-      if (glazeMm > 0.1) {
+      if (glazeMm > 0.1 && scenario === 'chuva_congelante') {
         ctx.fillStyle = 'rgba(56, 189, 248, 0.4)';
         const glazePx = Math.min(12, glazeMm * 0.8);
         ctx.fillRect(0, groundY - glazePx, width, glazePx);
@@ -1061,7 +1083,30 @@ export const SimulationCanvas: React.FC = () => {
 
         ctx.fillStyle = '#67e8f9';
         ctx.font = 'bold 9px JetBrains Mono, monospace';
-        ctx.fillText(`❄️ Película de Gelo no Solo (Glaze): ${glazeMm.toFixed(1)} mm`, width - 260, groundY - glazePx - 3);
+        ctx.fillText(`🧊 Película de Gelo no Solo (Glaze): ${glazeMm.toFixed(1)} mm`, width - 310, groundY - glazePx - 3);
+      } else if (engine.groundStats.snowCount > 0 && scenario === 'neve') {
+        const snowH = Math.min(12, 2 + Math.log10(engine.groundStats.snowCount + 1) * 3.5);
+        ctx.fillStyle = 'rgba(241, 245, 249, 0.85)';
+        ctx.fillRect(0, groundY - snowH, width, snowH);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.0;
+        ctx.strokeRect(0, groundY - snowH, width, snowH);
+        ctx.fillStyle = '#f8fafc';
+        ctx.font = 'bold 9px JetBrains Mono, monospace';
+        ctx.fillText(`❄️ Manto de Neve Acumulado no Solo (${engine.groundStats.snowCount} flocos)`, width - 330, groundY - snowH - 3);
+      } else if (engine.groundStats.sleetCount > 0 && scenario === 'sleet') {
+        const sleetH = Math.min(8, 1.5 + Math.log10(engine.groundStats.sleetCount + 1) * 2.5);
+        ctx.fillStyle = 'rgba(165, 180, 252, 0.5)';
+        ctx.fillRect(0, groundY - sleetH, width, sleetH);
+        ctx.fillStyle = '#c7d2fe';
+        ctx.font = 'bold 9px JetBrains Mono, monospace';
+        ctx.fillText(`🍚 Pelotas de Gelo Acumuladas (${engine.groundStats.sleetCount} grãos)`, width - 320, groundY - sleetH - 3);
+      } else if (engine.groundStats.rainCount > 0 && scenario === 'chuva') {
+        ctx.fillStyle = 'rgba(14, 165, 233, 0.3)';
+        ctx.fillRect(0, groundY - 3, width, 3);
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'bold 9px JetBrains Mono, monospace';
+        ctx.fillText(`🌧️ Asfalto Molhado com Poças (${engine.groundStats.rainCount} gotas)`, width - 320, groundY - 6);
       }
 
       // Ground Labels

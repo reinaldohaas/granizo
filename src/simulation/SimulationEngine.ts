@@ -51,7 +51,7 @@ export class SimulationEngine {
     globalRNG.setSeed(this.params.randomSeed);
     this.wind.reseed();
     const isConvective = this.params.family === 'convective';
-    this.particles.init(this.params.numParticles, isConvective, this.params.activeScenario);
+    this.particles.init(this.params.numParticles, isConvective, this.params.activeScenario, this.params.snowflakeSizeMm);
     this.selectedIndex = 0;
   }
 
@@ -181,6 +181,9 @@ export class SimulationEngine {
             type = ParticleType.MELTING_SNOW;
           } else {
             type = ParticleType.RAIN;
+            if (this.params.raindropSizeMm) {
+              diam = this.params.raindropSizeMm * 0.95;
+            }
           }
         }
 
@@ -220,17 +223,18 @@ export class SimulationEngine {
           } else if (type === ParticleType.SUPERCOOLED_DROP) {
             // Freezes upon contact with surface! Accumulates ice glaze film
             this.groundStats.freezingRainCount++;
-            this.groundStats.glazeIceThicknessMm = Math.min(25.0, this.groundStats.glazeIceThicknessMm + 0.12);
+            const rateInc = (this.params.glazeAccretionRateMmH ?? 1.8) * 0.04;
+            this.groundStats.glazeIceThicknessMm = Math.min(30.0, this.groundStats.glazeIceThicknessMm + rateInc);
           }
 
           const respawnIdx = i;
           setTimeout(() => {
-            this.particles.spawnParticle(respawnIdx, false, false);
+            this.particles.spawnParticle(respawnIdx, false, false, undefined, this.params.snowflakeSizeMm);
           }, 100 + Math.random() * 300);
         }
 
         if (x < 1.0 || x > 21.0) {
-          this.particles.spawnParticle(i, false, false);
+          this.particles.spawnParticle(i, false, false, undefined, this.params.snowflakeSizeMm);
         }
 
       } else {

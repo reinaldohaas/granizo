@@ -60,7 +60,7 @@ export class ParticleSystem {
     }
   }
 
-  public init(numParticles: number, isConvective: boolean, scenario?: ScenarioPreset): void {
+  public init(numParticles: number, isConvective: boolean, scenario?: ScenarioPreset, baseDiamMm?: number): void {
     this.activeCount = Math.min(numParticles, this.capacity);
     if (scenario === 'tempestade_comum') {
       // In Byers & Braham (1949) Ordinary Cell, starts with exactly 0 active particles!
@@ -78,7 +78,7 @@ export class ParticleSystem {
       }
     } else {
       for (let i = 0; i < this.activeCount; i++) {
-        this.spawnParticle(i, isConvective, true, scenario);
+        this.spawnParticle(i, isConvective, true, scenario, baseDiamMm);
       }
     }
   }
@@ -87,7 +87,8 @@ export class ParticleSystem {
     index: number,
     isConvective: boolean,
     isInitial: boolean = false,
-    scenario?: ScenarioPreset
+    scenario?: ScenarioPreset,
+    baseDiamMm?: number
   ): void {
     if (!isConvective) {
       // THERMODYNAMIC NOAA MODE: Spawns aloft as SNOWFLAKES falling from stratiform cloud
@@ -97,7 +98,8 @@ export class ParticleSystem {
       this.velocitiesZ[index] = globalRNG.range(-1.8, -2.8); // gentle snowflake fall
 
       this.types[index] = ParticleType.SNOW;
-      const diamMm = globalRNG.range(2.0, 4.0);
+      const targetBase = baseDiamMm && baseDiamMm > 0 ? baseDiamMm : 3.0;
+      const diamMm = globalRNG.range(targetBase * 0.8, targetBase * 1.25);
       this.diameters[index] = diamMm;
       this.masses[index] = 0.002;
       this.regimes[index] = GrowthRegime.NONE;

@@ -87,6 +87,13 @@ export interface SimulationParams {
   stormMinutes: number;         // 0 to 30 minutes
   autoEvolveStorm: boolean;     // Whether storm advances continuously
   stormEvolutionRate: number;   // Storm minutes per real-time second (e.g. 1.2 min/s)
+  // Independent Precipitation Control Parameters (Refurbished)
+  precipIntensity: number;      // 1 (Fraca), 2 (Leve), 3 (Moderada), 4 (Forte), 5 (Torrencial)
+  snowflakeSizeMm: number;      // 1.5 to 6.0 mm (for Neve)
+  raindropSizeMm: number;       // 1.0 to 5.0 mm (for Chuva)
+  warmNoseTempC: number;        // Warm layer max temperature in °C (for Sleet / Freezing Rain)
+  coldLayerDepthKm: number;     // Depth of cold layer in km (for Sleet / Freezing Rain)
+  glazeAccretionRateMmH: number;// Glaze growth rate in mm/h (for Chuva Congelante)
   // Exactly 4 NOAA Sounding Levels
   soundingNodes: SoundingNode[];
 }
