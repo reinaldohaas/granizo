@@ -94,7 +94,7 @@ export const SimulationCanvas: React.FC = () => {
       if (now - lastReactSync > 100) {
         lastReactSync = now;
         const selIdx = useSimulationStore.getState().selectedParticleId - 1;
-        if (selIdx >= 0 && selIdx < engine.particles.activeCount) {
+        if (selIdx >= 0 && selIdx < engine.particles.activeCount && engine.particles.alive[selIdx]) {
           const z = engine.particles.positionsZ[selIdx];
           const T = engine.atmos.getTemperature(z, engine.params.zFreezingKm, engine.params.soundingNodes);
           const Td = engine.atmos.getDewPoint(z, engine.params.soundingNodes);
@@ -103,6 +103,27 @@ export const SimulationCanvas: React.FC = () => {
           const diam = engine.particles.diameters[selIdx];
           const vt = 9.0 * Math.sqrt(Math.max(0.1, diam / 10.0)) * Math.sqrt(1.225 / rhoAir);
           updateTelemetry(engine.particles.getTelemetry(selIdx, T, Td, w, vt));
+        } else {
+          let foundAlive = -1;
+          for (let k = 0; k < engine.particles.activeCount; k++) {
+            if (engine.particles.alive[k]) {
+              foundAlive = k;
+              break;
+            }
+          }
+          if (foundAlive >= 0) {
+            selectParticle(foundAlive + 1);
+            const z = engine.particles.positionsZ[foundAlive];
+            const T = engine.atmos.getTemperature(z, engine.params.zFreezingKm, engine.params.soundingNodes);
+            const Td = engine.atmos.getDewPoint(z, engine.params.soundingNodes);
+            const { w } = engine.wind.evaluate(engine.particles.positionsX[foundAlive], z, engine.simTimeSec, engine.params);
+            const rhoAir = engine.atmos.getAirDensity(z);
+            const diam = engine.particles.diameters[foundAlive];
+            const vt = 9.0 * Math.sqrt(Math.max(0.1, diam / 10.0)) * Math.sqrt(1.225 / rhoAir);
+            updateTelemetry(engine.particles.getTelemetry(foundAlive, T, Td, w, vt));
+          } else {
+            updateTelemetry(null);
+          }
         }
         updateGroundStats(engine.groundStats);
       }
@@ -436,13 +457,34 @@ export const SimulationCanvas: React.FC = () => {
         else if (tMin <= 27.0) stageName = 'Estagio 4: Inicio da Dissipacao (22 - 27 min) • Downdraft Sufoca o Updraft';
         else stageName = 'Estagio 5: Dissipacao Completa (27 - 30 min) • Bigorna Orfa e Fim da Chuva';
 
+        let aliveCount = 0;
+        for (let j = 0; j < engine.particles.activeCount; j++) {
+          if (engine.particles.alive[j]) aliveCount++;
+        }
+
         ctx.fillStyle = '#f8fafc';
         ctx.font = 'bold 12px JetBrains Mono, monospace';
         ctx.fillText(`⏱️ ${tMin.toFixed(1)} min / 30 min • ${stageName}`, kmToX(1.5), kmToY(12.8));
 
-        ctx.fillStyle = 'rgba(148, 163, 184, 0.8)';
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.85)';
         ctx.font = '10px JetBrains Mono, monospace';
-        ctx.fillText('Modelo Classico Byers e Braham (1949) • Contornos 1, 3, 5 de Agua Liquida', kmToX(1.5), kmToY(12.3));
+        ctx.fillText('Modelo Classico Byers & Braham (1949) • Contornos 1, 3, 5 de Agua Liquida', kmToX(1.5), kmToY(12.3));
+
+        ctx.fillStyle = aliveCount > 0 ? '#38bdf8' : '#94a3b8';
+        ctx.font = 'bold 10px JetBrains Mono, monospace';
+        let particleStatusText = '';
+        if (tMin < 2.5) {
+          particleStatusText = '0 partículas ativas (ar ascendente em condensação, sem hidrometeoros visíveis)';
+        } else if (tMin < 18.0) {
+          particleStatusText = `${aliveCount} partículas ativas (formação e crescimento rápido de embriões de graupel)`;
+        } else if (tMin <= 21.0) {
+          particleStatusText = `${aliveCount} partículas ativas (AUGE DA NUVEM: pedras de granizo maduras no ápice)`;
+        } else if (tMin <= 28.0) {
+          particleStatusText = `${aliveCount} partículas ativas (DOWNDRAFT: pedras caem com a nuvem e precipitam no solo)`;
+        } else {
+          particleStatusText = `${aliveCount} partículas (dissipação completa: nuvem e partículas esvaziadas)`;
+        }
+        ctx.fillText(`Partículas na nuvem: ${particleStatusText}`, kmToX(1.5), kmToY(11.8));
       } else if (scenario === 'tempestade_forte') {
         // =========================================================================
         // TEMPESTADE MUITO FORTE / MULTICELULAR COM LINHA DE FLANCO (IV, III, II, I)
@@ -1143,7 +1185,10 @@ export const SimulationCanvas: React.FC = () => {
               onChange={(e) => {
                 const val = parseFloat(e.target.value);
                 setStormMinutes(val);
-                if (engineRef.current) engineRef.current.params.stormMinutes = val;
+                if (engineRef.current) {
+                  engineRef.current.params.stormMinutes = val;
+                  engineRef.current.syncOrdinaryStormState(val);
+                }
               }}
               className="flex-1 h-2 bg-slate-800 rounded-lg cursor-pointer accent-cyan-400"
             />
@@ -1164,7 +1209,10 @@ export const SimulationCanvas: React.FC = () => {
                 key={st.min}
                 onClick={() => {
                   setStormMinutes(st.min);
-                  if (engineRef.current) engineRef.current.params.stormMinutes = st.min;
+                  if (engineRef.current) {
+                    engineRef.current.params.stormMinutes = st.min;
+                    engineRef.current.syncOrdinaryStormState(st.min);
+                  }
                 }}
                 className={`px-1.5 py-1 rounded text-[10px] font-semibold border transition text-center ${
                   Math.abs((params.stormMinutes ?? 0) - st.min) < 2.5

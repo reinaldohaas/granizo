@@ -161,3 +161,84 @@ describe('PRNG Reproducibility and Numerical Stability', () => {
     expect(diam).toBeGreaterThanOrEqual(0.2);
   });
 });
+
+describe('Byers & Braham Ordinary Storm (Tempestade Comum) Particle Lifecycle', () => {
+  it('starts with exactly zero active particles at t = 0 min', async () => {
+    const { SimulationEngine } = await import('../src/simulation/SimulationEngine');
+    const { ScenarioFactory } = await import('../src/simulation/ScenarioFactory');
+
+    const params = ScenarioFactory.createParamsForScenario('tempestade_comum');
+    const engine = new SimulationEngine(params);
+    engine.init();
+
+    let aliveCount = 0;
+    for (let i = 0; i < engine.particles.capacity; i++) {
+      if (engine.particles.alive[i] === 1) aliveCount++;
+    }
+    expect(aliveCount).toBe(0);
+  });
+
+  it('grows active particles and hail size up to maximum at mature stage (20 min)', async () => {
+    const { SimulationEngine } = await import('../src/simulation/SimulationEngine');
+    const { ScenarioFactory } = await import('../src/simulation/ScenarioFactory');
+
+    const params = ScenarioFactory.createParamsForScenario('tempestade_comum');
+    const engine = new SimulationEngine(params);
+    engine.init();
+
+    // Sync to 10 min (Cumulus / Congestus stage)
+    engine.syncOrdinaryStormState(10.0);
+    let aliveAt10 = 0;
+    for (let i = 0; i < engine.particles.capacity; i++) {
+      if (engine.particles.alive[i] === 1) aliveAt10++;
+    }
+    expect(aliveAt10).toBeGreaterThan(0);
+    expect(aliveAt10).toBeLessThanOrEqual(params.numParticles);
+
+    // Sync to 20 min (Mature stage peak)
+    engine.syncOrdinaryStormState(20.0);
+    let aliveAt20 = 0;
+    let maxDiam = 0;
+    for (let i = 0; i < engine.particles.capacity; i++) {
+      if (engine.particles.alive[i] === 1) {
+        aliveAt20++;
+        if (engine.particles.diameters[i] > maxDiam) {
+          maxDiam = engine.particles.diameters[i];
+        }
+      }
+    }
+    expect(aliveAt20).toBe(params.numParticles);
+    expect(maxDiam).toBeGreaterThanOrEqual(10.0); // Hail grown significantly
+  });
+
+  it('depletes particles to zero as storm dissipates at 30 min', async () => {
+    const { SimulationEngine } = await import('../src/simulation/SimulationEngine');
+    const { ScenarioFactory } = await import('../src/simulation/ScenarioFactory');
+
+    const params = ScenarioFactory.createParamsForScenario('tempestade_comum');
+    const engine = new SimulationEngine(params);
+    engine.init();
+
+    // Sync to 25 min (Dissipating downdraft)
+    engine.syncOrdinaryStormState(25.0);
+    let aliveAt25 = 0;
+    let plungingCount = 0;
+    for (let i = 0; i < engine.particles.capacity; i++) {
+      if (engine.particles.alive[i] === 1) {
+        aliveAt25++;
+        if (engine.particles.velocitiesZ[i] < 0) plungingCount++;
+      }
+    }
+    expect(aliveAt25).toBeLessThan(params.numParticles);
+    expect(plungingCount).toBe(aliveAt25); // All falling downward with the cloud
+
+    // Sync to 30 min (Full dissipation)
+    engine.syncOrdinaryStormState(30.0);
+    let aliveAt30 = 0;
+    for (let i = 0; i < engine.particles.capacity; i++) {
+      if (engine.particles.alive[i] === 1) aliveAt30++;
+    }
+    expect(aliveAt30).toBe(0);
+  });
+});
+

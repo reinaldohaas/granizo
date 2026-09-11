@@ -62,8 +62,24 @@ export class ParticleSystem {
 
   public init(numParticles: number, isConvective: boolean, scenario?: ScenarioPreset): void {
     this.activeCount = Math.min(numParticles, this.capacity);
-    for (let i = 0; i < this.activeCount; i++) {
-      this.spawnParticle(i, isConvective, true, scenario);
+    if (scenario === 'tempestade_comum') {
+      // In Byers & Braham (1949) Ordinary Cell, starts with exactly 0 active particles!
+      for (let i = 0; i < this.capacity; i++) {
+        this.alive[i] = 0;
+        this.positionsX[i] = 9.0;
+        this.positionsZ[i] = 0.0;
+        this.diameters[i] = 2.0;
+        this.velocitiesX[i] = 0.0;
+        this.velocitiesZ[i] = 0.0;
+        this.prevVz[i] = 0.0;
+        this.types[i] = ParticleType.GRAUPEL;
+        this.trajectories[i] = [];
+        this.layerHistories[i] = [];
+      }
+    } else {
+      for (let i = 0; i < this.activeCount; i++) {
+        this.spawnParticle(i, isConvective, true, scenario);
+      }
     }
   }
 
@@ -134,6 +150,30 @@ export class ParticleSystem {
 
       const type = ParticleType.GRAUPEL;
       const diamMm = globalRNG.range(2.0, 4.0);
+      this.types[index] = type;
+      this.diameters[index] = diamMm;
+      const density = HailstonePhysics.getDensity(diamMm, false);
+      this.masses[index] = HailstonePhysics.massFromDiameter(diamMm, density);
+      this.regimes[index] = GrowthRegime.DRY;
+      this.layers[index] = 1;
+      this.recirculations[index] = 0;
+      this.waterCollected[index] = 0;
+      this.frozenFractions[index] = 1.0;
+      this.meltedFractions[index] = 0.0;
+      this.meltProgress[index] = 0.0;
+      this.freezeProgress[index] = 0.0;
+      this.alive[index] = 1;
+    } else if (scenario === 'tempestade_comum') {
+      // Ordinary cell updraft core (centered at x = 9.0 km)
+      // Nascent embryos form in the ascending column above the condensation base
+      this.positionsX[index] = 9.0 + globalRNG.range(-0.75, 0.75);
+      this.positionsZ[index] = globalRNG.range(2.8, 3.8); // above base (~2.5 km), near 0°C (~3.6 km)
+      this.velocitiesX[index] = globalRNG.range(-0.5, 0.5);
+      this.velocitiesZ[index] = globalRNG.range(3.5, 7.5); // upward convective push
+      this.prevVz[index] = this.velocitiesZ[index];
+
+      const type = ParticleType.GRAUPEL;
+      const diamMm = globalRNG.range(1.8, 2.6); // nascent graupel embryo
       this.types[index] = type;
       this.diameters[index] = diamMm;
       const density = HailstonePhysics.getDensity(diamMm, false);
